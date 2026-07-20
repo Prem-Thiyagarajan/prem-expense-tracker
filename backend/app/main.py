@@ -6,6 +6,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.api.api_router import api_router
+from app.core.limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 from dotenv import load_dotenv
 
 # Load a standard .env file for consistency. Render will use its own environment variables.
@@ -15,6 +18,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Personal Finance Tracker API")
+
+# Rate limiting (slowapi): register limiter + 429 handler for @limiter.limit routes.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ✅ --- THIS IS THE CRITICAL FIX ---
 # This list defines which frontend URLs are allowed to make requests to your API.

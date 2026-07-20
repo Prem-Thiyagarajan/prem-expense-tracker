@@ -1,5 +1,5 @@
 # File: app/api/auth_router.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
@@ -13,31 +13,28 @@ from app.core.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES, REMEMBER_ME_EXPIRE_DAYS, get_password_hash
 )
 from app.core import deps
+from app.core.limiter import limiter
 
 router = APIRouter(tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
-    user = user_crud.get_user_by_identifier(db, identifier=user_in.username)
-    if user:
-        raise HTTPException(status_code=409, detail="Username already registered")
-    user_by_email = db.query(user_crud.User).filter(user_crud.User.email == user_in.email).first()
-    if user_by_email:
-        raise HTTPException(status_code=409, detail="Email already registered")
+@limiter.limit("5/hour")
+def register_user(request: Request, user_in: UserCreate, db: Session = Depends(get_db)):
+    # Uniform message for both collisions so registration can't be used to
+    # enumerate which usernames/emails already exist.
+    existing = user_crud.get_user_by_identifier(db, identifier=user_in.username) \
+        or db.query(user_crud.User).filter(user_crud.User.email == user_in.email).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Username or email already registered")
     return user_crud.create_user(db, user=user_in)
 
 
 @router.post("/login/password", response_model=Token)
-def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
+@limiter.limit("5/minute")
+def login_for_access_token(request: Request, db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
     """Legacy form-based login kept for Swagger UI compatibility."""
-    user = user_crud.get_user_by_identifier(db, identifier=form_data.username)
-    if not user or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    user = user_crud.authenticate_user(db, identifier=form_data.username, password=form_data.password)
     access_token = create_access_token(
         data={"sub": user.email},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -46,15 +43,10 @@ def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2Passw
 
 
 @router.post("/login", response_model=Token)
-def login_json(payload: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login_json(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
     """JSON login endpoint supporting Remember Me (30-day token) vs session (60-min token)."""
-    user = user_crud.get_user_by_identifier(db, identifier=payload.identifier)
-    if not user or not user.hashed_password or not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    user = user_crud.authenticate_user(db, identifier=payload.identifier, password=payload.password)
     if payload.remember_me:
         expires = timedelta(days=REMEMBER_ME_EXPIRE_DAYS)
     else:
@@ -65,7 +57,9 @@ def login_json(payload: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/change-password", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
 def change_password(
+    request: Request,
     payload: ChangePasswordRequest,
     db: Session = Depends(get_db),
     current_user=Depends(deps.get_current_active_user)

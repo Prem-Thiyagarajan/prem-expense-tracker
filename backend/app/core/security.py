@@ -12,6 +12,10 @@ load_dotenv()
 # --- Password Hashing ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Precomputed hash verified against when a login identifier doesn't exist, so
+# response timing can't reveal whether an account exists (user enumeration).
+DUMMY_PASSWORD_HASH = pwd_context.hash("timing-equalization-dummy")
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
