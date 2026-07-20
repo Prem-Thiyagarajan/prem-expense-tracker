@@ -62,6 +62,14 @@ export const changePassword = (data: { old_password: string; new_password: strin
   apiClient.post('/auth/change-password', data).then(res => res.data);
 export const getMyProfile = (): Promise<User> => apiClient.get<User>('/users/me').then(res => res.data);
 
+// --- Password Recovery (security question) ---
+export const setSecurityQuestion = (data: { current_password: string; question: string; answer: string }): Promise<{ message: string }> =>
+  apiClient.post('/auth/security-question', data).then(res => res.data);
+export const getRecoveryQuestion = (identifier: string): Promise<{ question: string }> =>
+  apiClient.post('/auth/recovery/question', { identifier }).then(res => res.data);
+export const resetPasswordWithAnswer = (data: { identifier: string; answer: string; new_password: string }): Promise<{ message: string }> =>
+  apiClient.post('/auth/recovery/reset', data).then(res => res.data);
+
 // --- Your Existing API Functions (No changes needed below) ---
 
 // 1. Dashboard

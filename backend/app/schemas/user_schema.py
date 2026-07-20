@@ -15,5 +15,6 @@ class UserCreate(UserBase):
 
 class UserOut(UserBase):
     id: int
+    has_security_question: bool = False
     class Config:
         from_attributes = True

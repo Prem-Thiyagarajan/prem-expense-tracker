@@ -56,6 +56,33 @@ def get_user_by_email(db: Session, email: str) -> User | None:
     """Finds a user specifically by their email."""
     return db.query(User).filter(User.email == email).first()
 
+def _normalize_answer(answer: str) -> str:
+    return answer.strip().lower()
+
+def set_security_question(db: Session, user: User, question: str, answer: str):
+    user.security_question = question.strip()
+    user.security_answer_hash = get_password_hash(_normalize_answer(answer))
+    db.commit()
+
+def get_recovery_question(db: Session, identifier: str) -> str | None:
+    user = get_user_by_identifier(db, identifier=identifier)
+    if user and user.security_answer_hash and user.security_question:
+        return user.security_question
+    return None
+
+def reset_password_with_answer(db: Session, identifier: str, answer: str, new_password: str) -> bool:
+    """Verify the security answer; on success set the new password and clear any lockout."""
+    user = get_user_by_identifier(db, identifier=identifier)
+    if not user or not user.security_answer_hash or not verify_password(_normalize_answer(answer), user.security_answer_hash):
+        if not (user and user.security_answer_hash):
+            verify_password(_normalize_answer(answer), DUMMY_PASSWORD_HASH)  # equalize timing
+        return False
+    user.hashed_password = get_password_hash(new_password)
+    user.failed_login_count = 0
+    user.locked_until = None
+    db.commit()
+    return True
+
 def create_user(db: Session, user: UserCreate):
     # We have removed the data seeding as you requested.
     hashed_password = get_password_hash(user.password)

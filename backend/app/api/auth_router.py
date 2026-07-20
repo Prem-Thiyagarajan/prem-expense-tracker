@@ -6,7 +6,10 @@ from datetime import timedelta
 
 from app.db.session import get_db
 from app.schemas.user_schema import UserCreate, UserOut
-from app.schemas.auth_schema import Token, LoginRequest, ChangePasswordRequest
+from app.schemas.auth_schema import (
+    Token, LoginRequest, ChangePasswordRequest,
+    SecurityQuestionSet, RecoveryStartRequest, RecoveryQuestionOut, RecoveryResetRequest,
+)
 from app.crud import user_crud
 from app.core.security import (
     verify_password, create_access_token,
@@ -69,3 +72,41 @@ def change_password(
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     user_crud.update_password(db, user_id=current_user.id, new_hashed_password=get_password_hash(payload.new_password))
     return {"message": "Password updated successfully"}
+
+
+@router.post("/security-question", status_code=status.HTTP_200_OK)
+def set_security_question(
+    payload: SecurityQuestionSet,
+    db: Session = Depends(get_db),
+    current_user=Depends(deps.get_current_active_user),
+):
+    """Set/update the recovery security question. Requires the current password
+    so a stolen session token alone can't seed a recovery answer."""
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if not payload.question.strip() or not payload.answer.strip():
+        raise HTTPException(status_code=400, detail="Question and answer are required.")
+    user_crud.set_security_question(db, current_user, payload.question, payload.answer)
+    return {"message": "Security question saved."}
+
+
+@router.post("/recovery/question", response_model=RecoveryQuestionOut)
+@limiter.limit("5/hour")
+def get_recovery_question(request: Request, payload: RecoveryStartRequest, db: Session = Depends(get_db)):
+    """Return the security question for an account that has one configured."""
+    question = user_crud.get_recovery_question(db, identifier=payload.identifier)
+    if not question:
+        raise HTTPException(status_code=404, detail="No security question is set for this account.")
+    return {"question": question}
+
+
+@router.post("/recovery/reset", status_code=status.HTTP_200_OK)
+@limiter.limit("5/hour")
+def recovery_reset(request: Request, payload: RecoveryResetRequest, db: Session = Depends(get_db)):
+    """Reset the password if the security answer is correct."""
+    ok = user_crud.reset_password_with_answer(
+        db, identifier=payload.identifier, answer=payload.answer, new_password=payload.new_password
+    )
+    if not ok:
+        raise HTTPException(status_code=400, detail="Incorrect answer to the security question.")
+    return {"message": "Password reset successfully. You can now log in with your new password."}
