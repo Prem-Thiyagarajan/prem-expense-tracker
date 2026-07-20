@@ -39,7 +39,7 @@ def login_for_access_token(request: Request, db: Session = Depends(get_db), form
     """Legacy form-based login kept for Swagger UI compatibility."""
     user = user_crud.authenticate_user(db, identifier=form_data.username, password=form_data.password)
     access_token = create_access_token(
-        data={"sub": user.email},
+        data={"sub": user.email, "ver": user.token_version},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {"access_token": access_token, "token_type": "bearer"}
@@ -55,7 +55,7 @@ def login_json(request: Request, payload: LoginRequest, db: Session = Depends(ge
     else:
         expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    access_token = create_access_token(data={"sub": user.email}, expires_delta=expires)
+    access_token = create_access_token(data={"sub": user.email, "ver": user.token_version}, expires_delta=expires)
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -67,11 +67,19 @@ def change_password(
     db: Session = Depends(get_db),
     current_user=Depends(deps.get_current_active_user)
 ):
-    """Allows a logged-in user to change their password by providing the old one."""
+    """Change the password after verifying the old one. Bumps token_version to
+    revoke every other existing session, and returns a fresh token so THIS
+    session stays logged in."""
     if not verify_password(payload.old_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
-    user_crud.update_password(db, user_id=current_user.id, new_hashed_password=get_password_hash(payload.new_password))
-    return {"message": "Password updated successfully"}
+    current_user.hashed_password = get_password_hash(payload.new_password)
+    current_user.token_version = (current_user.token_version or 0) + 1
+    db.commit()
+    new_token = create_access_token(
+        data={"sub": current_user.email, "ver": current_user.token_version},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    return {"message": "Password updated successfully", "access_token": new_token}
 
 
 @router.post("/security-question", status_code=status.HTTP_200_OK)

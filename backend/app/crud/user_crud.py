@@ -80,6 +80,7 @@ def reset_password_with_answer(db: Session, identifier: str, answer: str, new_pa
     user.hashed_password = get_password_hash(new_password)
     user.failed_login_count = 0
     user.locked_until = None
+    user.token_version = (user.token_version or 0) + 1  # revoke any existing sessions
     db.commit()
     return True
 
@@ -95,13 +96,6 @@ def create_user(db: Session, user: UserCreate):
     db.commit()
     db.refresh(db_user)
     return db_user
-
-def update_password(db: Session, user_id: int, new_hashed_password: str):
-    user = db.query(User).filter(User.id == user_id).first()
-    if user:
-        user.hashed_password = new_hashed_password
-        db.commit()
-    return user
 
 def delete_user(db: Session, user_id: int):
     user = db.query(User).filter(User.id == user_id).first()

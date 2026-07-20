@@ -16,6 +16,9 @@ class User(Base):
     failed_login_count = Column(Integer, nullable=False, server_default="0")
     locked_until = Column(DateTime, nullable=True)
 
+    # Bumped to revoke all existing JWTs for this user (logout-everywhere).
+    token_version = Column(Integer, nullable=False, server_default="0")
+
     # Self-service password recovery (answer is bcrypt-hashed, never plaintext)
     security_question = Column(Text, nullable=True)
     security_answer_hash = Column(String(255), nullable=True)
