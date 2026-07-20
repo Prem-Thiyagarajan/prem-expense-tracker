@@ -4,7 +4,7 @@ from . import (
     account_router, alert_router, analytics_router, budget_plan_router,
     category_router, dashboard_router, goal_router, merchant_router,
     tag_router, transaction_router, transaction_tag_router,
-    upload_router, test_router, 
+    upload_router,
     auth_router,
     users_router
 )
@@ -38,6 +38,3 @@ api_router.include_router(goal_router.router, prefix="/goals")
 api_router.include_router(tag_router.router, prefix="/tags")
 api_router.include_router(transaction_tag_router.router, prefix="/transaction-tags")
 api_router.include_router(alert_router.router, prefix="/alerts")
-
-# Utility Endpoints
-api_router.include_router(test_router.router, prefix="/test")

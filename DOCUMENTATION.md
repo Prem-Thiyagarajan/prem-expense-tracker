@@ -1133,7 +1133,7 @@ Then redeploy the backend.
 | Variable | Required | Example | Notes |
 |---|---|---|---|
 | `DATABASE_URL` | Yes | `postgresql+psycopg2://user:pass@host:5432/dbname` | Read by `app/db/session.py` via `os.getenv()` and also by `app/core/config.py` via pydantic-settings |
-| `SECRET_KEY` | Yes | `MerpBbh4YeLKZW` | Used to sign JWT tokens. Use a long random string in production |
+| `SECRET_KEY` | Yes | `<run: python -c "import secrets; print(secrets.token_urlsafe(64))">` | Used to sign JWT tokens. Must be a long random string; use a different value in production than in dev |
 
 ### Frontend
 

@@ -1,6 +1,6 @@
 # File: app/main.py
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.api_router import api_router
 from dotenv import load_dotenv
@@ -30,6 +30,14 @@ app.add_middleware(
     allow_methods=["*"],    # Allows all standard methods (GET, POST, etc.)
     allow_headers=["*"],    # Allows all standard headers
 )
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
 
 app.include_router(api_router, prefix="/api/v1")
 
