@@ -15,7 +15,7 @@ router = APIRouter()
 
 MAX_FILES = 10
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-ALLOWED_EXTENSIONS = ('.csv', '.xlsx', '.xls')
+ALLOWED_EXTENSIONS = ('.csv', '.xlsx', '.xls', '.pdf')
 
 
 @router.post("/upload-statements")
@@ -41,7 +41,7 @@ def upload_statements(
     for file in files:
         filename = file.filename or ""
         if not filename.lower().endswith(ALLOWED_EXTENSIONS):
-            raise HTTPException(status_code=400, detail=f"Unsupported file type: {filename}. Allowed: CSV, XLSX, XLS.")
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {filename}. Allowed: CSV, XLSX, XLS, PDF.")
         if file.size and file.size > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail=f"{filename} is too large (max {MAX_FILE_SIZE // (1024 * 1024)} MB).")
 

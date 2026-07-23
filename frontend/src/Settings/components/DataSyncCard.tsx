@@ -36,9 +36,9 @@ const DataSyncCard: React.FC = () => {
         <p className="text-sm text-gray-500">Import new transactions from your bank statements</p>
       </div>
       <div className="bg-gray-50 rounded-md px-4 py-3 text-sm">
-          <p>Click the button below to upload new .csv statement files.</p>
+          <p>Click the button below to upload new statement files (CSV, Excel, or PDF).</p>
       </div>
-      <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileChange} accept=".csv" />
+      <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileChange} accept=".csv,.xlsx,.xls,.pdf" />
       <button onClick={handleUploadClick} disabled={isUploading} className="w-full bg-black hover:bg-gray-800 text-white font-bold py-2 rounded-md flex items-center justify-center gap-2 transition-colors disabled:bg-gray-500">
         <Upload size={18} />
         {isUploading ? 'Uploading...' : 'Upload Bank Statements'}
