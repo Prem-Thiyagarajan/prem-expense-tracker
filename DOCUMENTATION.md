@@ -34,7 +34,7 @@
 |---|---|
 | Dashboard | Monthly KPI cards (total spent, daily average, projected spend), spending trend chart, top categories donut chart, recent transactions |
 | Transactions | Full CRUD, filterable by date/category/account/type/search, paginated, multi-tag support |
-| CSV Import | Upload bank statements from HDFC, ICICI, or Paytm — auto-parses, deduplicates, and categorises |
+| Statement Import | Upload bank statements as CSV, Excel (.xls/.xlsx), or PDF from HDFC, ICICI, SBI, or Paytm — auto-detects the bank and layout, deduplicates, and categorises |
 | Budgets | Set monthly spending limits per category; smart suggestions from past 3 months if no history |
 | Budget Alerts | Proactive alerts at 75%, 90%, and 100% of a category budget |
 | Analytics | Spending velocity, habit identifier, category distribution, monthly breakdown, transaction heatmap |
@@ -111,7 +111,8 @@ User action in browser
 | pydantic-settings | 2.10.1 | Settings from environment variables |
 | python-jose | 3.5.0 | JWT creation and validation |
 | passlib + bcrypt | 1.7.4 / 3.2.2 | Password hashing |
-| Pandas | 2.3.1 | CSV parsing for bank statement uploads |
+| Pandas | 2.3.1 | CSV/Excel parsing for bank statement uploads |
+| pdfplumber | 0.11.4 | PDF word/table extraction for borderless bank statement PDFs |
 | RapidFuzz / thefuzz | 3.13.0 / 0.22.1 | Fuzzy string matching for smart categorisation |
 | openpyxl / xlrd | 3.1.5 / 2.0.2 | Excel file support |
 | python-multipart | 0.0.20 | File upload (multipart form data) |
@@ -158,6 +159,7 @@ prem-expense-tracker/               ← Monorepo root
 │       ├── schemas/                ← Pydantic request/response shapes
 │       ├── crud/                   ← Raw database operations
 │       ├── services/               ← Business logic
+│       │   └── parsing/            ← Modular CSV/Excel/PDF statement parser (see 5)
 │       ├── core/                   ← Auth, config, DI
 │       └── db/                     ← DB engine and session
 │
@@ -334,7 +336,22 @@ Services contain logic that is too complex for a single CRUD call. Routers deleg
 | `budget_plan_service.py` | Constructs the full budget plan view: pacing analysis, suggestions from history, retroactive alert creation |
 | `dashboard_service.py` | Assembles KPI metrics, spending trend data, top categories, recent transactions |
 | `analytics_service.py` | Spending velocity vs historical, habit identifier, category distribution, heatmap, monthly breakdown |
-| `upload_service.py` | Parses bank CSVs, detects duplicates by unique_key, applies smart categorisation, creates transactions |
+| `upload_service.py` | Detects duplicates by `unique_key`, applies smart categorisation, creates transactions (see `app/services/parsing/` for the actual file parsing) |
+
+---
+
+### `app/services/parsing/` — Statement Parsing Package
+
+Turns an uploaded CSV/Excel/PDF file into a list of normalized transaction dicts. Built to survive bank statement layout changes (renamed columns, different export tools) without code changes — see [Key Business Logic](#10-key-business-logic) for the end-to-end flow.
+
+| File | Responsibility |
+|---|---|
+| `base.py` | `BankConfig` dataclass — declarative per-bank layout: each column (`date_col`, `desc_col`, `debit_col`, `credit_col`, `ref_col`, `unique_id_col`) is a **tuple of aliases**, not a single string |
+| `configs.py` | `BANK_CONFIGS` registry — one `BankConfig` entry per bank (HDFC, ICICI, SBI). Adding a new bank or a renamed column is a one-line/one-tuple change here, nothing else |
+| `parsers.py` | Tokenizing alias matcher (`_find_col`) that matches a config alias to a real header regardless of spacing, casing, glued `camelCase`, or trailing text like `(INR)`; native-float amount parsing (avoids a numpy/psycopg2 binding bug); CSV/Excel reading; and PDF table reconstruction — clusters `pdfplumber` words into lines by y-position, groups multi-line transaction blocks, and buckets words into columns by x-position (left-edge, not nearest-center, so wide description columns don't bleed into amount columns) |
+| `__init__.py` | Public entry point `parse_statement(filename, raw_bytes, account_map)`. Detects bank + header row (filename hint, then header-signature scan), dispatches to the matching parser, and skips unconfigured accounts. If nothing parses, raises a `ValueError` naming the columns/shapes it actually found, so a layout change is diagnosable without needing the raw file |
+
+**Why alias tuples instead of fixed column names:** banks periodically rename statement columns (e.g. `"Value Date"` → `"Transaction Date"`, or gluing `"Withdrawal Amount(INR)"` with no space). Instead of chasing every variant with new parsing code, each `BankConfig` field lists known aliases, and `_find_col` matches by word-tokens being a subset of the real header's tokens — so most renames just need a new string added to a tuple in `configs.py`, not new logic.
 
 ---
 
@@ -352,7 +369,7 @@ Services contain logic that is too complex for a single CRUD call. Routers deleg
 
 | File | What it does |
 |---|---|
-| `session.py` | Creates the SQLAlchemy `engine` from `DATABASE_URL` env var; defines `SessionLocal` factory; exports `get_db()` generator dependency |
+| `session.py` | Creates the SQLAlchemy `engine` from the `DATABASE_URL` env var; defines `SessionLocal` factory; exports `get_db()` generator dependency. **Raises `RuntimeError` at import time if `DATABASE_URL` isn't set** — there is no hardcoded fallback, so a working `.env` (or Render env var) is required to start the app |
 | `base_class.py` | Declares `Base = declarative_base()` — all models import and extend this |
 | `dependency.py` | Re-exports `get_db` for use as a FastAPI `Depends()` |
 | `init_test_db.py` | Creates all tables from models (used for test setup) |
@@ -489,7 +506,7 @@ Defines all routes. Every route except `/login` and `/register` is wrapped in `<
 | `components/TagModal.tsx` | Form: tag name |
 | `components/AccountsCard.tsx` | Lists bank accounts with edit/delete |
 | `components/AccountModal.tsx` | Form: account name, type (Savings/Current/etc.), provider (bank name) |
-| `components/DataSyncCard.tsx` | File input for uploading multiple bank statement CSVs. Calls `uploadStatements()` |
+| `components/DataSyncCard.tsx` | File input for uploading multiple bank statements (CSV, XLSX, XLS, or PDF). Calls `uploadStatements()` |
 | `components/ConfirmDeleteAccountModal.tsx` | Password re-entry confirmation before permanently deleting the user account |
 | `components/SettingsHeader.tsx` | Page heading |
 
@@ -817,7 +834,7 @@ All endpoints are prefixed with `/api/v1`. All endpoints except auth require `Au
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| POST | `/settings/upload-statements` | `multipart/form-data`: `files[]` | `{ imported, duplicates, errors }` |
+| POST | `/settings/upload-statements` | `multipart/form-data`: `files[]` (CSV, XLSX, XLS, or PDF; max 10 files, 10 MB each) | `{ message }` — count of transactions found and inserted |
 
 ---
 
@@ -932,18 +949,37 @@ For each goal (budget limit) the user has for this category + month:
   User sees alerts via the bell icon in the Navbar
 ```
 
-### CSV Import (Bank Statements)
+### Statement Import (CSV / Excel / PDF)
+
+Parsing (`app/services/parsing/`) and persistence (`upload_service.py`) are separate layers — see the "`app/services/parsing/` — Statement Parsing Package" subsection under [Backend Deep Dive](#5-backend-deep-dive) for the package breakdown.
 
 ```
-1. Detect bank from file headers (HDFC / ICICI / Paytm)
-2. Parse each row using bank-specific column mapping (via Pandas)
-3. For each row:
+1. Read the file into one or more grids (rows of cells):
+   - CSV/Excel → read directly with Pandas (one grid per sheet)
+   - PDF → extract words with pdfplumber, cluster into lines by y-position,
+     group multi-line transaction blocks, bucket words into columns by
+     x-position → reconstructed into the same grid shape as a CSV/Excel read
+
+2. Detect the bank + header row for each grid:
+   - Try the filename first (e.g. "icici_july.csv"), else scan the first
+     rows for a header whose columns match a bank's signature_columns
+   - Column names are matched by alias + word-tokens (case/spacing/"(INR)"
+     tolerant), not exact string equality — see BankConfig in configs.py
+
+3. For each detected row:
    a. Build unique_key = "{source}-{ref}-{date}-{amount}"
    b. Check if unique_key already exists for this user → skip if duplicate
    c. Detect merchant via fuzzy name matching against user's merchant list
    d. Run smart categorisation pipeline (see above)
    e. Insert transaction
-4. Return summary: { imported: N, duplicates: N, errors: [...] }
+
+4. If a grid's header can't be matched to any configured bank, the upload
+   fails loudly: the error names the shapes/columns of the unmatched
+   table(s) found, so a bank's renamed column is diagnosable without
+   needing the raw file — see parse_statement() in parsing/__init__.py
+
+5. Return summary: { message: "... Found N potential transactions and
+   inserted M new records." }
 ```
 
 ### Analytics Time Periods
@@ -1024,6 +1060,13 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 The API will be available at `http://localhost:8000`. Interactive docs at `http://localhost:8000/docs`.
+
+**Testing the statement parser:** the parsing package has a standalone self-check covering CSV/Excel/PDF layouts, alias matching, and dedup keys — no DB or running server needed:
+
+```bash
+# From the backend/ directory, with the venv active
+python tests/test_parsing.py
+```
 
 ### Step 3 — Frontend Setup
 
@@ -1132,7 +1175,7 @@ Then redeploy the backend.
 
 | Variable | Required | Example | Notes |
 |---|---|---|---|
-| `DATABASE_URL` | Yes | `postgresql+psycopg2://user:pass@host:5432/dbname` | Read by `app/db/session.py` via `os.getenv()` and also by `app/core/config.py` via pydantic-settings |
+| `DATABASE_URL` | Yes | `postgresql+psycopg2://user:pass@host:5432/dbname` | Read by `app/db/session.py` via `os.getenv()` and also by `app/core/config.py` via pydantic-settings. **No hardcoded fallback** — the app refuses to start without it |
 | `SECRET_KEY` | Yes | `<run: python -c "import secrets; print(secrets.token_urlsafe(64))">` | Used to sign JWT tokens. Must be a long random string; use a different value in production than in dev |
 
 ### Frontend
