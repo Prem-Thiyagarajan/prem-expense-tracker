@@ -1,84 +1,66 @@
 # File: app/api/upload_router.py
+import logging
+from typing import List
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
+
 from app.db.session import get_db
-from app.services import upload_service
+from app.services import upload_service, parsing
 from app.models.account import Account
 from app.models.user import User
 from app.core import deps
-from typing import List
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
-#! CHANGE: Protect route and scope all operations to the current user
+MAX_FILES = 10
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+ALLOWED_EXTENSIONS = ('.csv', '.xlsx', '.xls', '.pdf')
+
+
 @router.post("/upload-statements")
 def upload_statements(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user),
-    files: List[UploadFile] = File(..., description="A list of bank statement CSV files to upload.")
+    files: List[UploadFile] = File(..., description="Bank statement files (CSV/XLSX/XLS) to upload.")
 ):
-    """
-    Uploads one or more bank statement files for the authenticated user, 
-    parses them, and inserts new, non-duplicate transactions into the database.
-    """
+    """Upload statement files for the current user, parse them, and insert new
+    non-duplicate transactions. Format detection and parsing live in
+    app.services.parsing; this route only validates input and persists results."""
     if not files:
         raise HTTPException(status_code=400, detail="At least one statement file must be uploaded.")
+    if len(files) > MAX_FILES:
+        raise HTTPException(status_code=400, detail=f"Too many files. Upload at most {MAX_FILES} at a time.")
 
-    # Fetch the account map ONLY for the current user
     user_accounts = db.query(Account).filter(Account.user_id == current_user.id).all()
     account_map = {acc.name: acc.id for acc in user_accounts}
-    
     if not account_map:
         raise HTTPException(status_code=400, detail="No accounts configured for your profile. Please add an account in Settings before uploading.")
 
     all_txns = []
-    processed_files = []
+    for file in files:
+        filename = file.filename or ""
+        if not filename.lower().endswith(ALLOWED_EXTENSIONS):
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {filename}. Allowed: CSV, XLSX, XLS, PDF.")
+        if file.size and file.size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail=f"{filename} is too large (max {MAX_FILE_SIZE // (1024 * 1024)} MB).")
 
-    try:
-        for file in files:
-            filename = file.filename.lower() if file.filename else ""
-            
-            # This logic remains the same, but the `account_map` is now user-specific
-            if 'hdfc' in filename:
-                if "HDFC Bank" not in account_map:
-                    print(f"Skipping HDFC file for user {current_user.id}: HDFC Bank account not configured.")
-                    continue
-                txns = upload_service.parse_generic_statement(
-                    file=file, account_id=account_map["HDFC Bank"], source="HDFC",
-                    date_col="Date", desc_col="Narration", debit_col="Withdrawal Amt",
-                    credit_col="Deposit Amt", ref_col="Chq/RefNo"
-                )
-                all_txns.extend(txns)
+        raw = file.file.read()
+        if len(raw) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail=f"{filename} is too large (max {MAX_FILE_SIZE // (1024 * 1024)} MB).")
 
-            elif 'icici' in filename:
-                if "ICICI Bank" not in account_map:
-                    print(f"Skipping ICICI file for user {current_user.id}: ICICI Bank account not configured.")
-                    continue
-                txns = upload_service.parse_generic_statement(
-                    file=file, account_id=account_map["ICICI Bank"], source="ICICI",
-                    date_col="Value Date", desc_col="Transaction Remarks", debit_col="Withdrawal Amount (INR )",
-                    credit_col="Deposit Amount (INR )", ref_col="Cheque Number", unique_id_col="S No."
-                )
-                all_txns.extend(txns)
-
-            elif 'paytm' in filename:
-                txns = upload_service.parse_paytm_statement(file=file, account_map=account_map)
-                all_txns.extend(txns)
-            else:
-                print(f"Skipping unknown file type for user {current_user.id}: {file.filename}")
-            
-            processed_files.append(file)
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during file parsing: {e}")
-    finally:
-        for f in processed_files:
-            f.file.close()
+        try:
+            all_txns.extend(parsing.parse_statement(filename, raw, account_map))
+        except ValueError as e:
+            # Safe, caller-facing messages (unsupported type / oversized sheet).
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception:
+            # Never leak internals; log the real error server-side.
+            logger.exception("Failed to parse uploaded file %s for user %s", filename, current_user.id)
+            raise HTTPException(status_code=400, detail=f"Could not parse {filename}. Please check that it is a valid statement export.")
 
     if not all_txns:
-        raise HTTPException(status_code=400, detail="The uploaded file(s) did not contain any valid transactions to process for your configured accounts.")
+        raise HTTPException(status_code=400, detail="The uploaded file(s) did not contain any valid transactions for your configured accounts.")
 
-    # Pass the user_id to the final processing function
     inserted_count = upload_service.process_and_insert_transactions(db, all_txns, user_id=current_user.id)
-    
     return {"message": f"Upload successful. Found {len(all_txns)} potential transactions and inserted {inserted_count} new records."}

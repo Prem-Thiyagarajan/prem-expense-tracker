@@ -39,3 +39,6 @@ backend/build/
 backend/dist/
 backend/htmlcov/
 backend/.pytest_cache/
+
+# mcp json ignore
+*.mcp.json

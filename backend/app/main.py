@@ -1,14 +1,27 @@
 # File: app/main.py
 
-from fastapi import FastAPI
+import logging
+import uuid
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.api.api_router import api_router
+from app.core.limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 from dotenv import load_dotenv
 
 # Load a standard .env file for consistency. Render will use its own environment variables.
 load_dotenv(".env")
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Personal Finance Tracker API")
+
+# Rate limiting (slowapi): register limiter + 429 handler for @limiter.limit routes.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ✅ --- THIS IS THE CRITICAL FIX ---
 # This list defines which frontend URLs are allowed to make requests to your API.
@@ -30,6 +43,24 @@ app.add_middleware(
     allow_methods=["*"],    # Allows all standard methods (GET, POST, etc.)
     allow_headers=["*"],    # Allows all standard headers
 )
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Log the real error; return a generic message so internals never leak."""
+    request_id = str(uuid.uuid4())
+    logger.exception("Unhandled error [%s] on %s %s", request_id, request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal error occurred.", "request_id": request_id},
+    )
 
 app.include_router(api_router, prefix="/api/v1")
 

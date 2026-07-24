@@ -59,8 +59,25 @@ export const logout = () => {
   window.location.href = '/login';
 };
 export const changePassword = (data: { old_password: string; new_password: string }): Promise<{ message: string }> =>
-  apiClient.post('/auth/change-password', data).then(res => res.data);
+  apiClient.post('/auth/change-password', data).then(res => {
+    // Backend bumps token_version (revoking other sessions) and returns a fresh
+    // token for THIS session — save it into whichever storage holds the current one.
+    const t = res.data.access_token;
+    if (t) {
+      if (localStorage.getItem('accessToken')) localStorage.setItem('accessToken', t);
+      else sessionStorage.setItem('accessToken', t);
+    }
+    return res.data;
+  });
 export const getMyProfile = (): Promise<User> => apiClient.get<User>('/users/me').then(res => res.data);
+
+// --- Password Recovery (security question) ---
+export const setSecurityQuestion = (data: { current_password: string; question: string; answer: string }): Promise<{ message: string }> =>
+  apiClient.post('/auth/security-question', data).then(res => res.data);
+export const getRecoveryQuestion = (identifier: string): Promise<{ question: string }> =>
+  apiClient.post('/auth/recovery/question', { identifier }).then(res => res.data);
+export const resetPasswordWithAnswer = (data: { identifier: string; answer: string; new_password: string }): Promise<{ message: string }> =>
+  apiClient.post('/auth/recovery/reset', data).then(res => res.data);
 
 // --- Your Existing API Functions (No changes needed below) ---
 

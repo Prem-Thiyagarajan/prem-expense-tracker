@@ -1,8 +1,8 @@
 // File: src/Profile/ProfilePage.tsx
 import React, { useState, useEffect } from 'react';
-import { getMyProfile, changePassword } from '../api/apiClient';
+import { getMyProfile, changePassword, setSecurityQuestion } from '../api/apiClient';
 import type { User } from '../types';
-import { UserCircle, Mail, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { UserCircle, Mail, KeyRound, Eye, EyeOff, ShieldQuestion } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PasswordStrength from '../auth/PasswordStrength';
 
@@ -21,6 +21,18 @@ const ProfilePage: React.FC = () => {
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Security question
+    const SECURITY_QUESTIONS = [
+        'What was the name of your first pet?',
+        "What is your mother's maiden name?",
+        'What city were you born in?',
+        'What was the name of your first school?',
+    ];
+    const [sqQuestion, setSqQuestion] = useState(SECURITY_QUESTIONS[0]);
+    const [sqAnswer, setSqAnswer] = useState('');
+    const [sqPassword, setSqPassword] = useState('');
+    const [isSavingSQ, setIsSavingSQ] = useState(false);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -64,6 +76,26 @@ const ProfilePage: React.FC = () => {
             toast.error(msg);
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleSetSecurityQuestion = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!sqAnswer.trim()) {
+            toast.error('Please enter an answer.');
+            return;
+        }
+        setIsSavingSQ(true);
+        try {
+            await setSecurityQuestion({ current_password: sqPassword, question: sqQuestion, answer: sqAnswer });
+            toast.success('Security question saved!');
+            setSqAnswer('');
+            setSqPassword('');
+            setUser(prev => prev ? { ...prev, has_security_question: true } : prev);
+        } catch (err: any) {
+            toast.error(err.response?.data?.detail || 'Failed to save security question.');
+        } finally {
+            setIsSavingSQ(false);
         }
     };
 
@@ -161,6 +193,59 @@ const ProfilePage: React.FC = () => {
                         className="px-6 py-2.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-semibold"
                     >
                         {isSaving ? 'Saving...' : 'Update Password'}
+                    </button>
+                </form>
+            </div>
+
+            {/* Security Question (password recovery) */}
+            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-700 mb-1 flex items-center gap-2">
+                    <ShieldQuestion size={18} /> Security Question
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                    {user.has_security_question
+                        ? 'A security question is set. You can update it below. This lets you reset your password if you forget it.'
+                        : 'Set a security question so you can reset your password without email if you forget it.'}
+                </p>
+                <form onSubmit={handleSetSecurityQuestion} className="space-y-4">
+                    <div>
+                        <label className="text-sm font-semibold">Question</label>
+                        <select
+                            value={sqQuestion}
+                            onChange={e => setSqQuestion(e.target.value)}
+                            className="w-full p-3 mt-1 border rounded-lg bg-white"
+                        >
+                            {SECURITY_QUESTIONS.map(q => <option key={q} value={q}>{q}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-sm font-semibold">Answer</label>
+                        <input
+                            type="text"
+                            value={sqAnswer}
+                            onChange={e => setSqAnswer(e.target.value)}
+                            placeholder="Your answer (case-insensitive)"
+                            className="w-full p-3 mt-1 border rounded-lg"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="text-sm font-semibold">Current Password</label>
+                        <input
+                            type="password"
+                            value={sqPassword}
+                            onChange={e => setSqPassword(e.target.value)}
+                            placeholder="Confirm with your current password"
+                            className="w-full p-3 mt-1 border rounded-lg"
+                            required
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={isSavingSQ}
+                        className="px-6 py-2.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-semibold"
+                    >
+                        {isSavingSQ ? 'Saving...' : (user.has_security_question ? 'Update Security Question' : 'Save Security Question')}
                     </button>
                 </form>
             </div>

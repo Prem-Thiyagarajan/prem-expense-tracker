@@ -33,8 +33,11 @@ def get_current_active_user(
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
+
     user = user_crud.get_user_by_email(db, email=email)
     if user is None:
+        raise credentials_exception
+    # Reject tokens issued before the user's version was bumped (revocation).
+    if payload.get("ver") != user.token_version:
         raise credentials_exception
     return user

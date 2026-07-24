@@ -170,6 +170,7 @@ export interface User {
     id: number;
     username: string;
     email: string;
+    has_security_question?: boolean;
 }
 
 // Add this interface to your existing types.ts file

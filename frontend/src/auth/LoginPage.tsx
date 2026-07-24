@@ -1,10 +1,14 @@
 // File: src/auth/LoginPage.tsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { login } from '../api/apiClient';
+import { login, getRecoveryQuestion, resetPasswordWithAnswer } from '../api/apiClient';
 import toast from 'react-hot-toast';
 import loginImage from '../assets/login.jpg';
-import { Eye, EyeOff, X, Info } from 'lucide-react';
+import { Eye, EyeOff, X } from 'lucide-react';
+import PasswordStrength from './PasswordStrength';
+
+const isPasswordStrong = (p: string) =>
+    p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[\W_]/.test(p);
 
 const LoginPage: React.FC = () => {
     const [identifier, setIdentifier] = useState('');
@@ -13,7 +17,51 @@ const LoginPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showForgotModal, setShowForgotModal] = useState(false);
+
+    // Recovery modal state
+    const [recIdentifier, setRecIdentifier] = useState('');
+    const [recQuestion, setRecQuestion] = useState('');
+    const [recAnswer, setRecAnswer] = useState('');
+    const [recNewPassword, setRecNewPassword] = useState('');
+    const [recBusy, setRecBusy] = useState(false);
+
     const navigate = useNavigate();
+
+    const closeForgot = () => {
+        setShowForgotModal(false);
+        setRecIdentifier(''); setRecQuestion(''); setRecAnswer(''); setRecNewPassword('');
+    };
+
+    const handleFetchQuestion = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setRecBusy(true);
+        try {
+            const { question } = await getRecoveryQuestion(recIdentifier);
+            setRecQuestion(question);
+        } catch (err: any) {
+            toast.error(err.response?.data?.detail || 'Could not start recovery. Try again.');
+        } finally {
+            setRecBusy(false);
+        }
+    };
+
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!isPasswordStrong(recNewPassword)) {
+            toast.error('New password does not meet security requirements.');
+            return;
+        }
+        setRecBusy(true);
+        try {
+            await resetPasswordWithAnswer({ identifier: recIdentifier, answer: recAnswer, new_password: recNewPassword });
+            toast.success('Password reset! You can now log in.');
+            closeForgot();
+        } catch (err: any) {
+            toast.error(err.response?.data?.detail || 'Could not reset password.');
+        } finally {
+            setRecBusy(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -99,31 +147,71 @@ const LoginPage: React.FC = () => {
                 <img src={loginImage} alt="Login" className="max-w-full max-h-full rounded-2xl shadow-xl" />
             </div>
 
-            {/* Forgot Password Modal */}
+            {/* Forgot Password Modal — security-question recovery */}
             {showForgotModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-gray-800">Forgot Your Password?</h2>
-                            <button onClick={() => setShowForgotModal(false)} className="text-gray-400 hover:text-gray-600">
+                            <h2 className="text-lg font-bold text-gray-800">Reset Your Password</h2>
+                            <button onClick={closeForgot} className="text-gray-400 hover:text-gray-600">
                                 <X size={20} />
                             </button>
                         </div>
-                        <div className="flex gap-3 bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                            <Info size={20} className="text-blue-500 mt-0.5 shrink-0" />
-                            <p className="text-sm text-blue-800 leading-relaxed">
-                                This app doesn't support automated password reset emails yet. To reset your password, please contact the <span className="font-semibold">admin</span>.
-                            </p>
-                        </div>
-                        <p className="text-sm text-gray-500 mb-5">
-                            Once your password is reset by the admin, you can log in and change it anytime from your <span className="font-medium text-gray-700">Profile page</span>.
-                        </p>
-                        <button
-                            onClick={() => setShowForgotModal(false)}
-                            className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-                        >
-                            Got it
-                        </button>
+
+                        {!recQuestion ? (
+                            <form onSubmit={handleFetchQuestion} className="space-y-4">
+                                <p className="text-sm text-gray-500">
+                                    Enter your email or username. If you've set a security question, we'll ask it next.
+                                </p>
+                                <div>
+                                    <label className="text-sm font-semibold">Email or Username</label>
+                                    <input
+                                        type="text"
+                                        value={recIdentifier}
+                                        onChange={e => setRecIdentifier(e.target.value)}
+                                        placeholder="yourname or your@email.com"
+                                        className="w-full p-3 mt-1 border rounded-lg"
+                                        required
+                                    />
+                                </div>
+                                <button type="submit" disabled={recBusy} className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400">
+                                    {recBusy ? 'Checking...' : 'Continue'}
+                                </button>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleResetPassword} className="space-y-4">
+                                <div>
+                                    <label className="text-sm font-semibold">Security Question</label>
+                                    <p className="mt-1 text-sm text-gray-800 bg-gray-50 p-3 rounded-md">{recQuestion}</p>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-semibold">Your Answer</label>
+                                    <input
+                                        type="text"
+                                        value={recAnswer}
+                                        onChange={e => setRecAnswer(e.target.value)}
+                                        placeholder="Answer to your security question"
+                                        className="w-full p-3 mt-1 border rounded-lg"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-semibold">New Password</label>
+                                    <input
+                                        type="password"
+                                        value={recNewPassword}
+                                        onChange={e => setRecNewPassword(e.target.value)}
+                                        placeholder="Create a new strong password"
+                                        className="w-full p-3 mt-1 border rounded-lg"
+                                        required
+                                    />
+                                    <PasswordStrength password={recNewPassword} />
+                                </div>
+                                <button type="submit" disabled={recBusy} className="w-full py-2.5 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400">
+                                    {recBusy ? 'Resetting...' : 'Reset Password'}
+                                </button>
+                            </form>
+                        )}
                     </div>
                 </div>
             )}
