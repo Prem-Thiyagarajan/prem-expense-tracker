@@ -15,14 +15,14 @@ router = APIRouter()
 
 MAX_FILES = 10
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-ALLOWED_EXTENSIONS = ('.csv', '.xlsx', '.xls', '.pdf')
+ALLOWED_EXTENSIONS = ('.csv', '.xlsx', '.xls', '.xlsm', '.xlsb', '.pdf')
 
 
 @router.post("/upload-statements")
 def upload_statements(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_active_user),
-    files: List[UploadFile] = File(..., description="Bank statement files (CSV/XLSX/XLS) to upload.")
+    files: List[UploadFile] = File(..., description="Bank statement files (CSV/XLSX/XLS/XLSM/XLSB/PDF) to upload.")
 ):
     """Upload statement files for the current user, parse them, and insert new
     non-duplicate transactions. Format detection and parsing live in
@@ -41,7 +41,7 @@ def upload_statements(
     for file in files:
         filename = file.filename or ""
         if not filename.lower().endswith(ALLOWED_EXTENSIONS):
-            raise HTTPException(status_code=400, detail=f"Unsupported file type: {filename}. Allowed: CSV, XLSX, XLS, PDF.")
+            raise HTTPException(status_code=400, detail=f"Unsupported file type: {filename}. Allowed: CSV, XLSX, XLS, XLSM, XLSB, PDF.")
         if file.size and file.size > MAX_FILE_SIZE:
             raise HTTPException(status_code=400, detail=f"{filename} is too large (max {MAX_FILE_SIZE // (1024 * 1024)} MB).")
 

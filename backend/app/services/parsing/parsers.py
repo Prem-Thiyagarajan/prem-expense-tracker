@@ -78,8 +78,16 @@ def read_grids(filename: str, raw: bytes) -> list[pd.DataFrame]:
     name = filename.lower()
     if name.endswith('.csv'):
         return [pd.read_csv(io.BytesIO(raw), header=None)]
-    if name.endswith(('.xlsx', '.xls')):
+    if name.endswith(('.xlsx', '.xls', '.xlsm')):
+        # .xlsm (macro-enabled) is the same underlying zip+XML format as .xlsx --
+        # pandas auto-detects the right engine (openpyxl) from the file's magic
+        # bytes, not the extension, so nothing else changes.
         sheets = pd.read_excel(io.BytesIO(raw), sheet_name=None, header=None)  # dict{name: df}
+        return list(sheets.values())
+    if name.endswith('.xlsb'):
+        # Binary workbook format -- pandas can't auto-detect this from a byte
+        # buffer the way it does .xlsx/.xls, so the engine must be explicit.
+        sheets = pd.read_excel(io.BytesIO(raw), sheet_name=None, header=None, engine='pyxlsb')
         return list(sheets.values())
     if name.endswith('.pdf'):
         return _read_pdf_grids(raw)
@@ -87,16 +95,21 @@ def read_grids(filename: str, raw: bytes) -> list[pd.DataFrame]:
 
 
 def _read_pdf_grids(raw: bytes) -> list[pd.DataFrame]:
-    """Turn every page into candidate grids, two ways:
+    """Turn every page into candidate grids, three ways:
 
     1. pdfplumber.extract_tables() (default, line-based) -- works when the table
        has real ruled cell borders.
     2. Word-position reconstruction (_reconstruct_pdf_grid) -- for borderless
-       tables (shaded header + horizontal rules only, no vertical column lines),
-       which is the common bank e-statement layout and what line detection misses.
+       BANK e-statement tables (shaded header + horizontal rules only, no
+       vertical column lines).
+    3. Paytm-shaped reconstruction (_reconstruct_paytm_pdf_grid) -- Paytm's PDF
+       isn't a ruled table at all (one card per transaction, wrapped across
+       several lines), so neither of the above recognizes it; this bucket-by-
+       fixed-column-position pass is Paytm-specific.
 
     Every candidate is returned; detection (in __init__.py) keeps whichever matches
-    a bank's signature columns and skips the rest (legends, notes, stray boxes).
+    a bank's or Paytm's signature columns and skips the rest (legends, notes,
+    stray boxes).
 
     ponytail: pdfplumber only. Scanned/image PDFs (need OCR) and password-protected
     PDFs still fail with a clean ValueError. Add camelot/tabula only if a real bank
@@ -109,6 +122,9 @@ def _read_pdf_grids(raw: bytes) -> list[pd.DataFrame]:
     grids: list[pd.DataFrame] = []
     try:
         with pdfplumber.open(io.BytesIO(raw)) as pdf:
+            # The passbook never repeats the year per row ("31 Jul", no "2026")
+            # -- only the title banner on page 1 has it ("1 MAR'26 - 31 JUL'26").
+            year_info = _paytm_statement_year_range(pdf.pages[0].extract_text() or "") if pdf.pages else None
             for page in pdf.pages:
                 for table in page.extract_tables():
                     if table and len(table) > 1:
@@ -117,6 +133,9 @@ def _read_pdf_grids(raw: bytes) -> list[pd.DataFrame]:
                 reconstructed = _reconstruct_pdf_grid(words)
                 if reconstructed is not None and len(reconstructed) > 1:
                     grids.append(pd.DataFrame(reconstructed))
+                paytm_grid = _reconstruct_paytm_pdf_grid(words, year_info)
+                if paytm_grid is not None and len(paytm_grid) > 1:
+                    grids.append(pd.DataFrame(paytm_grid))
     except Exception as e:
         raise ValueError(f"Could not read PDF tables (password-protected or scanned?): {e}")
     if not grids:
@@ -292,6 +311,149 @@ def _reconstruct_pdf_grid(words) -> list[list[str]] | None:
         else:
             i += 1
     return grid if len(grid) > 1 else None
+
+
+# Paytm's PDF isn't a ruled bank-statement table -- it's one card per
+# transaction, several lines each, at FIXED x-positions (verified against a
+# real export; stable across pages/transactions). Column left-edges:
+#   Date & Time < 85  |  Transaction Details 85-285  |  Notes & Tags 285-390
+#   |  Your Account 390-478  |  Amount >= 478
+_PAYTM_PDF_COLUMN_BOUNDS = {"datetime": 0, "desc": 85, "tags": 285, "account": 390, "amount": 478}
+_MONTH_ABBR = {m: i + 1 for i, m in enumerate(
+    ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"])}
+_PAYTM_HEADER_WORDS = {"transaction", "your", "account", "amount"}
+_PAYTM_TIME_RE = re.compile(r'(\d{1,2}):(\d{2})\s*([AP]M)', re.I)
+_PAYTM_YEAR_RANGE_RE = re.compile(
+    r"(\d{1,2})\s([A-Za-z]{3})'(\d{2})\s*-\s*(\d{1,2})\s([A-Za-z]{3})'(\d{2})")
+
+
+def _is_paytm_pdf_row_start(line) -> bool:
+    """A transaction card's first line: a bare day-of-month then a 3-letter
+    month ("31 Jul") -- Paytm's passbook has no serial number to anchor on."""
+    ws = line["words"]
+    if len(ws) < 2:
+        return False
+    day, mon = ws[0]["text"].rstrip('.'), ws[1]["text"].rstrip('.').lower()
+    return day.isdigit() and 1 <= int(day) <= 31 and mon in _MONTH_ABBR
+
+
+def _paytm_statement_year_range(first_page_text: str) -> tuple[int, int, int, int] | None:
+    """(start_month, start_year, end_month, end_year) from the title banner
+    ("1 MAR'26 - 31 JUL'26") -- individual rows only ever show "DD Mon", never
+    a year, so this is the sole source of truth for which year each row is in.
+    """
+    m = _PAYTM_YEAR_RANGE_RE.search(first_page_text or "")
+    if not m:
+        return None
+    _, mon1, y1, _, mon2, y2 = m.groups()
+    mon1_n, mon2_n = _MONTH_ABBR.get(mon1.lower()), _MONTH_ABBR.get(mon2.lower())
+    if not mon1_n or not mon2_n:
+        return None
+    return mon1_n, 2000 + int(y1), mon2_n, 2000 + int(y2)
+
+
+def _paytm_pdf_amount_to_signed_str(text: str) -> str:
+    """"Rs.36,201" -> "36201" (no sign shown = money IN, Paytm's own convention
+    for self-transfers, the only case with no +/- prefix); "- Rs.100" -> "-100".
+    "Rs." must be stripped before the digit/dot filter -- its own period would
+    otherwise survive as a bogus decimal point ("Rs.36,201" -> "0.36201")."""
+    sign = "-" if text.strip().startswith("-") else ""
+    cleaned = re.sub(r"Rs\.?", "", text, flags=re.I).replace(",", "")
+    digits = re.sub(r"[^\d.]", "", cleaned)
+    return f"{sign}{digits}" if digits else ""
+
+
+def _reconstruct_paytm_pdf_grid(words, year_info: tuple[int, int, int, int] | None) -> list[list[str]] | None:
+    """Rebuild a Paytm-CSV-shaped grid (Date, Time, Transaction Details, Your
+    Account, Amount, UPI Ref No., Remarks) from one page's positioned words.
+
+    Bucketing is by FIXED column bounds (see _PAYTM_PDF_COLUMN_BOUNDS) rather
+    than anchor-derived ones like _reconstruct_pdf_grid -- Paytm's own layout
+    is stable enough that this is more reliable than re-deriving it per page,
+    and its headers ("Notes & Tags", "Your Account") don't share any words
+    with the bank-PDF anchor list, so there's no risk of the two colliding.
+
+    Returns a grid already shaped like the Paytm CSV export, so it flows
+    through the existing, already-tested parse_paytm() unchanged.
+    """
+    lines = _cluster_lines(words)
+    starts = [i for i, ln in enumerate(lines) if _is_paytm_pdf_row_start(ln)]
+    if not starts:
+        return None
+
+    header_words = [w for ln in lines[:starts[0]] for w in ln["words"]]
+    header_tokens = {w["text"].lower().strip(':&') for w in header_words}
+    if not _PAYTM_HEADER_WORDS <= header_tokens:
+        return None  # not a Paytm-shaped page
+
+    start_month, start_year, _end_month, end_year = year_info or (1, 2000, 12, 2099)
+
+    def year_for(month: int) -> int:
+        if start_year == end_year:
+            return start_year
+        return start_year if month >= start_month else end_year
+
+    def band(x0: float) -> str:
+        if x0 < _PAYTM_PDF_COLUMN_BOUNDS["desc"]:
+            return "datetime"
+        if x0 < _PAYTM_PDF_COLUMN_BOUNDS["tags"]:
+            return "desc"
+        if x0 < _PAYTM_PDF_COLUMN_BOUNDS["account"]:
+            return "tags"
+        if x0 < _PAYTM_PDF_COLUMN_BOUNDS["amount"]:
+            return "account"
+        return "amount"
+
+    rows = [["Date", "Time", "Transaction Details", "Your Account", "Amount", "UPI Ref No.", "Remarks"]]
+    for i, start in enumerate(starts):
+        end = starts[i + 1] if i + 1 < len(starts) else len(lines)
+        block_words = [w for ln in lines[start:end] for w in ln["words"]]
+        buckets: dict[str, list] = {"datetime": [], "desc": [], "account": [], "amount": []}
+        for w in block_words:
+            b = band(w["x0"])
+            if b in buckets:
+                buckets[b].append(w)
+
+        # Date & Time is always exactly 2 stacked lines ("31 Jul" / "3:47 PM");
+        # anything else there is a stray disclaimer line bleeding into this
+        # column's x-range -- harmless, it sorts after these by position.
+        dt_lines = _cluster_lines(buckets["datetime"])
+        if len(dt_lines) < 2:
+            continue
+        day, mon = dt_lines[0]["words"][0]["text"], dt_lines[0]["words"][1]["text"].rstrip('.').lower()
+        month_num = _MONTH_ABBR.get(mon)
+        time_match = _PAYTM_TIME_RE.match(_line_text(dt_lines[1]))
+        if month_num is None or not time_match:
+            continue
+        date_str = f"{int(day):02d}/{month_num:02d}/{year_for(month_num)}"
+        hour, minute, ampm = int(time_match[1]), time_match[2], time_match[3].upper()
+        if ampm == "PM" and hour != 12:
+            hour += 12
+        if ampm == "AM" and hour == 12:
+            hour = 0
+        time_str = f"{hour:02d}:{minute}:00"
+
+        # First line of the desc band is the payee/description; UPI Ref No.
+        # sits a couple of lines further down in the SAME band (Paytm has no
+        # dedicated ref column), so it's pulled out by regex across the block.
+        desc_lines = _cluster_lines(buckets["desc"])
+        if not desc_lines:
+            continue
+        description = _line_text(desc_lines[0])
+        full_desc_text = " ".join(_line_text(ln) for ln in desc_lines)
+        ref_match = re.search(r"UPI Ref No:\s*(\d+)", full_desc_text)
+        upi_ref = ref_match.group(1) if ref_match else ""
+
+        account_text = " ".join(_line_text(ln) for ln in _cluster_lines(buckets["account"]))
+
+        amount_words = sorted(buckets["amount"], key=lambda w: (w["top"], w["x0"]))
+        amount_str = _paytm_pdf_amount_to_signed_str(" ".join(w["text"] for w in amount_words))
+        if not amount_str:
+            continue
+
+        rows.append([date_str, time_str, description, account_text, amount_str, upi_ref, ""])
+
+    return rows if len(rows) > 1 else None
 
 
 def find_header_row(grid: pd.DataFrame, signature, scan: int = 25) -> int | None:

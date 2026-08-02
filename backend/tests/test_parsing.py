@@ -2,6 +2,7 @@
 # Standalone parser self-check. Run: python tests/test_parsing.py  (from backend/)
 import os
 import sys
+from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -10,7 +11,8 @@ import pandas as pd  # noqa: E402
 from app.services import parsing  # noqa: E402
 from app.services.parsing import _detect  # noqa: E402
 from app.services.parsing.parsers import (  # noqa: E402
-    _reconstruct_pdf_grid, promote_header, parse_generic,
+    _reconstruct_pdf_grid, promote_header, parse_generic, parse_paytm,
+    _reconstruct_paytm_pdf_grid,
 )
 from app.services.parsing.configs import BANK_CONFIGS  # noqa: E402
 from app.services.parsing.keys import KeyBuilder  # noqa: E402
@@ -59,6 +61,17 @@ def test_detection_by_header_when_filename_is_generic():
 def test_unconfigured_account_is_skipped():
     txns = parsing.parse_statement("hdfc_july.csv", HDFC_CSV, {"ICICI Bank": 1})
     assert txns == []
+
+
+def test_account_name_matches_even_when_not_the_full_config_label():
+    # BankConfig.account_name is the fixed label "HDFC Bank", but a user's own
+    # account can be named anything ("HDFC", "HDFC Bank Savings"...). An exact
+    # match silently dropped every transaction whenever the names didn't match
+    # character-for-character -- this is the real bug behind statements that
+    # "don't recognize the layout" when the actual data parses fine.
+    for account_name in ("HDFC", "HDFC Bank", "HDFC Bank Savings"):
+        txns = parsing.parse_statement("hdfc_july.csv", HDFC_CSV, {account_name: 7})
+        assert len(txns) == 2, (account_name, txns)
 
 
 def test_unsupported_extension_raises():
@@ -207,6 +220,59 @@ def test_paytm():
     t = txns[0]
     assert t["type"] == "debit" and t["amount"] == 250.0
     assert t["account_id"] == 7 and t["source"] == "HDFC Bank"
+
+
+def test_paytm_pdf_word_reconstruction():
+    # Synthetic pdfplumber word output modelled on the REAL Paytm PDF export --
+    # column x-positions taken from the actual file (not guessed): Date & Time
+    # < 85, Transaction Details 85-285, Notes & Tags 285-390, Your Account
+    # 390-478, Amount >= 478. Each transaction is 3 stacked lines: date+desc+
+    # account-name+amount, then time alone, then desc-continuation ("UPI Ref
+    # No:") + account-number.
+    def w(text, x0, top):
+        return {"text": text, "x0": float(x0), "x1": float(x0 + len(text) * 5), "top": float(top)}
+
+    words = []
+    # header (Notes & Tags column isn't required by the app but is part of the
+    # real layout -- included so header-word detection sees the real shape)
+    words += [w(t, x, 100) for t, x in [("Date", 22), ("Transaction", 90), ("Notes", 288), ("Your", 395), ("Amount", 491)]]
+    words += [w(t, x, 110) for t, x in [("Details", 90), ("Tags", 288), ("Account", 413), ("Time", 22)]]
+
+    # txn 1 (debit, ICICI): amount has a thousands comma -- must not become a
+    # bogus decimal via the "Rs." prefix (the real bug this parser hit first).
+    words += [w(t, x, 140) for t, x in [("01", 22), ("Jul", 40)]]
+    words += [w(t, x, 140) for t, x in [("Paid", 91), ("to", 115), ("Zomato", 130)]]
+    words += [w(t, x, 140) for t, x in [("ICICI", 413), ("Bank", 445)]]
+    words += [w("-", 480, 140), w("Rs.1,270", 486, 140)]
+    words += [w("10:30", 22, 150), w("AM", 45, 150)]
+    words += [w(t, x, 160) for t, x in [("UPI", 91), ("Ref", 108), ("No:", 126), ("123456789012", 144)]]
+    words += [w("70", 413, 160)]
+
+    # txn 2 (credit, Axis, self-transfer -- no +/- sign shown)
+    words += [w(t, x, 200) for t, x in [("30", 22), ("Jun", 40)]]
+    words += [w(t, x, 200) for t, x in [("Transferred", 91), ("to", 145), ("Self", 158)]]
+    words += [w(t, x, 200) for t, x in [("Axis", 413), ("Bank", 440)]]
+    words += [w("Rs.500", 491, 200)]
+    words += [w("9:05", 22, 210), w("PM", 40, 210)]
+    words += [w(t, x, 220) for t, x in [("UPI", 91), ("Ref", 108), ("No:", 126), ("987654321098", 144)]]
+    words += [w("61", 413, 220)]
+
+    year_info = (3, 2026, 7, 2026)  # "1 MAR'26 - 31 JUL'26"
+    grid = _reconstruct_paytm_pdf_grid(words, year_info)
+    assert grid is not None, "reconstruction returned nothing"
+    df = pd.DataFrame(grid)
+
+    detected = _detect("statement.pdf", df)
+    assert detected == ("paytm", 0), (detected, grid)
+    txns = parse_paytm(promote_header(df, 0), {"ICICI": 16, "Axis": 17}, KeyBuilder())
+    assert len(txns) == 2, grid
+    debit, credit = txns
+    assert debit["type"] == "debit" and debit["amount"] == 1270.0, grid
+    assert debit["account_id"] == 16 and debit["upi_ref"] == "123456789012"
+    assert debit["txn_date"] == datetime(2026, 7, 1, 10, 30, 0)
+    assert credit["type"] == "credit" and credit["amount"] == 500.0, grid
+    assert credit["account_id"] == 17
+    assert credit["txn_date"] == datetime(2026, 6, 30, 21, 5, 0)
 
 
 def test_paytm_amount_with_thousands_comma_is_not_dropped():
