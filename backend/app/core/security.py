@@ -32,7 +32,10 @@ if not SECRET_KEY:
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
-REMEMBER_ME_EXPIRE_DAYS = 7
+# "Remember me" tokens are long-lived and cannot be expired individually — the
+# only revocation lever is bumping the user's `token_version`. Keep the login
+# labels in the web and mobile clients in step with this number.
+REMEMBER_ME_EXPIRE_DAYS = 30
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()

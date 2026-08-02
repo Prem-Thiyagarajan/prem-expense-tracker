@@ -123,7 +123,7 @@ const LoginPage: React.FC = () => {
                                     className="w-4 h-4 accent-blue-600"
                                 />
                                 Remember Me
-                                <span className="text-gray-400 text-xs">(7 days)</span>
+                                <span className="text-gray-400 text-xs">(30 days)</span>
                             </label>
                             <button
                                 type="button"

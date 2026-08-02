@@ -360,7 +360,7 @@ Turns an uploaded CSV/Excel/PDF file into a list of normalized transaction dicts
 | File | What it does |
 |---|---|
 | `config.py` | `Settings` class reads `DATABASE_URL` from environment via `pydantic-settings`. Import as `from app.core.config import settings` |
-| `security.py` | `get_password_hash()`, `verify_password()`, `create_access_token()` — all JWT and bcrypt logic. Constants: `ACCESS_TOKEN_EXPIRE_MINUTES = 60` (session), `REMEMBER_ME_EXPIRE_DAYS = 7` (Remember Me) |
+| `security.py` | `get_password_hash()`, `verify_password()`, `create_access_token()` — all JWT and bcrypt logic. Constants: `ACCESS_TOKEN_EXPIRE_MINUTES = 60` (session), `REMEMBER_ME_EXPIRE_DAYS = 30` (Remember Me) |
 | `deps.py` | FastAPI dependency `get_current_active_user(token)` — decodes JWT, loads user from DB, raises 401 if invalid. Injected into every protected route |
 
 ---
@@ -727,7 +727,7 @@ All endpoints are prefixed with `/api/v1`. All endpoints except auth require `Au
 | Method | Path | Auth | Body | Response |
 |---|---|---|---|---|
 | POST | `/auth/register` | None | `{ username, email, password }` | `UserOut` |
-| POST | `/auth/login` | None | `{ identifier, password, remember_me }` | `{ access_token, token_type }` — token valid 7 days if `remember_me: true`, 60 min otherwise |
+| POST | `/auth/login` | None | `{ identifier, password, remember_me }` | `{ access_token, token_type }` — token valid 30 days if `remember_me: true`, 60 min otherwise |
 | POST | `/auth/login/password` | None | form-data: `username`, `password` | `{ access_token, token_type }` — legacy form endpoint (Swagger UI) |
 | POST | `/auth/change-password` | Required | `{ old_password, new_password }` | `{ message }` |
 
@@ -858,7 +858,7 @@ All endpoints are prefixed with `/api/v1`. All endpoints except auth require `Au
 3. Backend:
    a. Looks up user by email or username
    b. Verifies password with bcrypt
-   c. If remember_me = true  → JWT exp: now + 7 days
+   c. If remember_me = true  → JWT exp: now + 30 days
       If remember_me = false → JWT exp: now + 60 minutes
    d. Returns { access_token, token_type: "bearer" }
 4. Frontend:
