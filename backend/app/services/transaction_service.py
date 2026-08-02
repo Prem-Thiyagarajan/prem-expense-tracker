@@ -1,5 +1,6 @@
 # File: app/services/transaction_service.py
-from sqlalchemy.orm import Session, joinedload
+from datetime import timedelta
+from sqlalchemy.orm import Session, selectinload
 from app.models.transaction import Transaction
 
 def get_filtered_transactions(db: Session, filters: dict, user_id: int):
@@ -15,17 +16,20 @@ def get_filtered_transactions(db: Session, filters: dict, user_id: int):
     sort_by = filters.get("sort_by", "txn_date")
     order = filters.get("order", "desc")
 
-    # ✅ --- THIS IS THE FINAL FIX ---
-    # We must tell `joinedload` to use the REAL relationship (`tags_association`),
-    # not the virtual `association_proxy` (`tags`).
-    # This will eagerly load the data needed for the proxy to work during serialization.
-    query = db.query(Transaction).options(joinedload(Transaction.tags_association)).filter(Transaction.user_id == user_id)
+    # selectinload (a separate follow-up query), not joinedload: joining the
+    # to-many tags_association multiplies each transaction row per tag in the
+    # SQL result set, which inflates query.count() for any transaction with
+    # 2+ tags. selectinload keeps the base query row-per-transaction.
+    query = db.query(Transaction).options(selectinload(Transaction.tags_association)).filter(Transaction.user_id == user_id)
 
     # Apply all other filters
     if start_date:
         query = query.filter(Transaction.txn_date >= start_date)
     if end_date:
-        query = query.filter(Transaction.txn_date <= end_date)
+        # txn_date is a DateTime column; comparing it to a bare date with <=
+        # implicitly compares against midnight of that day, excluding every
+        # transaction on end_date itself that has a non-zero time-of-day.
+        query = query.filter(Transaction.txn_date < end_date + timedelta(days=1))
     if category_id:
         query = query.filter(Transaction.category_id == category_id)
     if account_id:

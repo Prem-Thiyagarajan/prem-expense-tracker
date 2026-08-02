@@ -34,8 +34,9 @@ def delete_budget_plan(db: Session, month: str, user_id: int):
 
 def get_budget_plan(db: Session, month: str, user_id: int):
     month_start = datetime.strptime(month, "%Y-%m").date()
+    next_month_start = month_start + relativedelta(months=1)
     today = date.today()
-    
+
     exclude_tag = db.query(Tag).filter(Tag.name == "Exclude from Analytics", Tag.user_id == user_id).first()
     transactions_to_exclude = []
     if exclude_tag:
@@ -44,20 +45,35 @@ def get_budget_plan(db: Session, month: str, user_id: int):
     existing_goals = db.query(Goal).filter(Goal.month == month, Goal.user_id == user_id).all()
 
     if existing_goals:
-        spent_subq = db.query(
-            Transaction.category_id.label("category_id"),
-            func.coalesce(func.sum(Transaction.amount), 0).label("spent")
+        # Range comparison on txn_date, not to_char(txn_date, ...) = :month --
+        # a function wrapped around the column can't use the (user_id,
+        # txn_date) index (same fix already applied in dashboard_service.py).
+        spent_by_category = dict(db.query(
+            Transaction.category_id,
+            func.coalesce(func.sum(Transaction.amount), 0)
         ).filter(
             Transaction.user_id == user_id,
-            Transaction.type == "debit", 
-            func.to_char(Transaction.txn_date, "YYYY-MM") == month,
+            Transaction.type == "debit",
+            Transaction.txn_date >= month_start,
+            Transaction.txn_date < next_month_start,
             Transaction.id.notin_(transactions_to_exclude)
-        ).group_by(Transaction.category_id).subquery()
-        
+        ).group_by(Transaction.category_id).all())
+
         goal_map = {goal.category_id: goal for goal in existing_goals}
         all_categories = db.query(Category).filter(Category.is_income == False, Category.user_id == user_id).all()
         response_plan = []
         day_of_month = today.day if month_start.strftime("%Y-%m") == today.strftime("%Y-%m") else 31
+
+        # Alerts already raised for this month's goals, fetched once rather
+        # than with a query per category inside the loop below.
+        existing_alert_keys = {
+            (goal_id, threshold) for goal_id, threshold in db.query(
+                Alert.goal_id, Alert.threshold_percentage
+            ).filter(
+                Alert.user_id == user_id,
+                Alert.goal_id.in_([g.id for g in existing_goals]),
+            ).all()
+        }
 
         # ✅ --- THIS IS THE FIX ---
         # The loop will now process every available category, not just those with a budget.
@@ -65,9 +81,8 @@ def get_budget_plan(db: Session, month: str, user_id: int):
             goal = goal_map.get(cat.id)
             # If a goal exists, use its budget. Otherwise, the budget is 0.
             budget = Decimal(goal.limit_amount) if goal else Decimal(0)
-            
-            spent_row = db.query(spent_subq.c.spent).filter(spent_subq.c.category_id == cat.id).first()
-            spent = Decimal(spent_row[0]) if spent_row else Decimal(0)
+
+            spent = Decimal(spent_by_category.get(cat.id, 0))
             remaining = budget - spent
             
             # Perform calculations, which will work correctly even if the budget is 0.
@@ -88,34 +103,31 @@ def get_budget_plan(db: Session, month: str, user_id: int):
                 spent_percentage = (spent / budget) * 100
                 for threshold in BUDGET_THRESHOLDS:
                     if spent_percentage >= threshold:
-                        alert_exists = db.query(Alert).filter(
-                            Alert.user_id == user_id,
-                            Alert.goal_id == goal.id,
-                            Alert.threshold_percentage == threshold
-                        ).first()
-                        if not alert_exists:
+                        if (goal.id, threshold) not in existing_alert_keys:
                             alert_crud.create_alert(db, user_id=user_id, alert_in={
                                 "goal_id": goal.id,
                                 "threshold_percentage": threshold
                             })
-                        break 
+                            existing_alert_keys.add((goal.id, threshold))
+                        break
         
         db.commit()
 
-        # Pacing Data (no changes here)
+        # Range comparison on txn_date, not to_char(txn_date, ...) = :month --
+        # same index-defeating issue as the ORM query above.
         pacing_query = text("""
             WITH daily_sums AS (
                 SELECT date(txn_date) as day, SUM(amount) as daily_total FROM transactions
-                WHERE user_id = :user_id AND type = 'debit' AND to_char(txn_date, 'YYYY-MM') = :month AND id NOT IN :excluded_ids GROUP BY 1
+                WHERE user_id = :user_id AND type = 'debit' AND txn_date >= :month_start AND txn_date < :next_month_start AND id NOT IN :excluded_ids GROUP BY 1
             ), all_days AS (
-                SELECT generate_series(date_trunc('month', CAST(:month_start AS date)), 
+                SELECT generate_series(date_trunc('month', CAST(:month_start AS date)),
                 date_trunc('month', CAST(:month_start AS date)) + interval '1 month - 1 day', '1 day'::interval)::date AS day
             )
             SELECT d.day, COALESCE(SUM(ds.daily_total) OVER (ORDER BY d.day), 0) as cumulative_spend
             FROM all_days d LEFT JOIN daily_sums ds ON d.day = ds.day
         """)
         pacing_result = db.execute(pacing_query, {
-            "user_id": user_id, "month": month, "month_start": month_start, 
+            "user_id": user_id, "month_start": month_start, "next_month_start": next_month_start,
             "excluded_ids": tuple(transactions_to_exclude) if transactions_to_exclude else (0,)
         }).fetchall()
         df = pd.DataFrame(pacing_result, columns=['day', 'cumulative_spend']).ffill()
@@ -146,8 +158,9 @@ def get_budget_plan(db: Session, month: str, user_id: int):
         
         current_month_spend_rows = db.query(Transaction.category_id, func.sum(Transaction.amount).label("current_spend")).filter(
             Transaction.user_id == user_id,
-            Transaction.type == "debit", 
-            func.to_char(Transaction.txn_date, "YYYY-MM") == month, 
+            Transaction.type == "debit",
+            Transaction.txn_date >= month_start,
+            Transaction.txn_date < next_month_start,
             Transaction.id.notin_(transactions_to_exclude)
         ).group_by(Transaction.category_id).all()
         current_spend_map = {row[0]: float(row[1]) for row in current_month_spend_rows}

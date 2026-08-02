@@ -1,5 +1,5 @@
 # File: app/schemas/transaction_schema.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 import uuid
@@ -21,6 +21,14 @@ class TransactionBase(BaseModel):
     unique_key: Optional[str] = Field(default_factory=default_unique_key)
     raw_data: Optional[Dict[str, Any]] = None
     tag_ids: Optional[List[int]] = []
+
+    @field_validator("unique_key")
+    @classmethod
+    def _no_explicit_null(cls, v):
+        # unique_key is NOT NULL in the DB; an explicit null in the request body
+        # would otherwise bypass default_factory (which only fires when the field
+        # is omitted entirely) and hit the constraint at insert time.
+        return v or default_unique_key()
 
 class TransactionCreate(TransactionBase):
     pass

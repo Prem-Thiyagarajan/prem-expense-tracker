@@ -4,7 +4,14 @@ add one BankConfig entry here -- nothing else changes. Each column is a tuple of
 aliases (see BankConfig); to handle a renamed column, add its new name to the
 relevant tuple. Aliases match by word-tokens, so "Withdrawal Amount" already
 covers "Withdrawal Amount (INR)", "Withdrawal Amount (INR )" and a PDF's
-line-wrapped "Withdrawal\nAmount (INR)"."""
+line-wrapped "Withdrawal\nAmount (INR)".
+
+Note there is deliberately no reference/serial column here. Statement serial
+numbers ("S No") and cheque-number cells were once used to build each row's
+idempotency key, which broke re-imports: a re-export covering different dates
+renumbers every row, and blank cheque cells collapsed unrelated rows onto one
+key. Keys are now derived from transaction content alone -- see parsing.keys.
+"""
 from .base import BankConfig
 
 BANK_CONFIGS = {
@@ -14,7 +21,6 @@ BANK_CONFIGS = {
         desc_col=("Narration", "Description", "Transaction Remarks"),
         debit_col=("Withdrawal Amt", "Withdrawal Amount", "Debit"),
         credit_col=("Deposit Amt", "Deposit Amount", "Credit"),
-        ref_col=("Chq/RefNo", "Ref No", "Cheque Number"),
         signature_columns=("Narration", "Withdrawal Amt"),
     ),
     "icici": BankConfig(
@@ -25,8 +31,6 @@ BANK_CONFIGS = {
         desc_col=("Transaction Remarks", "Remarks", "Narration"),
         debit_col=("Withdrawal Amount", "Withdrawal Amt", "Debit"),
         credit_col=("Deposit Amount", "Deposit Amt", "Credit"),
-        ref_col=("Cheque Number", "Chq/RefNo", "Ref No"),
-        unique_id_col=("S No", "Sr No", "Serial"),
         signature_columns=("Transaction Remarks", "Withdrawal Amount"),
     ),
     # ponytail: SBI column names are the common CSV-export layout but UNVERIFIED
@@ -37,7 +41,6 @@ BANK_CONFIGS = {
         desc_col=("Description", "Narration", "Transaction Remarks"),
         debit_col=("Debit", "Withdrawal", "Withdrawal Amt"),
         credit_col=("Credit", "Deposit", "Deposit Amt"),
-        ref_col=("Ref No./Cheque No.", "Ref No", "Cheque Number"),
         signature_columns=("Description", "Debit", "Credit"),
     ),
 }

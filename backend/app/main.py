@@ -1,6 +1,7 @@
 # File: app/main.py
 
 import logging
+import time
 import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,8 +17,23 @@ load_dotenv(".env")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+timing_logger = logging.getLogger("api.timing")
 
 app = FastAPI(title="Personal Finance Tracker API")
+
+# TEMP: per-request server-side timing, added to debug slow month-navigation
+# clicks. Logs how long this process took to build the response (DB queries +
+# serialization), separate from network/device time. Safe to remove once the
+# bottleneck is confirmed — it's read-only and adds a response header + a log
+# line, nothing else.
+@app.middleware("http")
+async def request_timing(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    response.headers["X-Response-Time-Ms"] = f"{duration_ms:.1f}"
+    timing_logger.info("%6.1fms  %-6s %s", duration_ms, request.method, request.url.path)
+    return response
 
 # Rate limiting (slowapi): register limiter + 429 handler for @limiter.limit routes.
 app.state.limiter = limiter
