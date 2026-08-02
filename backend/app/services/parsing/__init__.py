@@ -53,6 +53,25 @@ def _detect(filename: str, grid) -> tuple[str, int] | None:
     return None
 
 
+def _match_account(account_map: dict, target_name: str) -> int | None:
+    """The user's account whose name overlaps `target_name`, case-insensitively.
+
+    BankConfig.account_name is a fixed label ("ICICI Bank") but a user's own
+    account name is free text ("ICICI", "ICICI Bank", "ICICI Savings"...). An
+    exact-match lookup silently drops every transaction for that account the
+    moment the names don't match character-for-character -- with no error,
+    since an unconfigured account is a deliberate, quiet skip. Substring
+    matching in either direction tolerates that without requiring the user to
+    name accounts to match internal config strings exactly.
+    """
+    target = target_name.lower()
+    for name, acc_id in account_map.items():
+        name_l = name.lower()
+        if name_l in target or target in name_l:
+            return acc_id
+    return None
+
+
 def parse_statement(filename: str, raw: bytes, account_map: dict) -> list[ParsedTxn]:
     """Read every sheet/table, detect its format, and return all parsed transactions.
 
@@ -84,7 +103,7 @@ def parse_statement(filename: str, raw: bytes, account_map: dict) -> list[Parsed
             out.extend(parse_paytm(df, account_map, keys))
         else:
             cfg = BANK_CONFIGS[fmt]
-            account_id = account_map.get(cfg.account_name)
+            account_id = _match_account(account_map, cfg.account_name)
             if account_id is None:
                 logger.info("Skipping %s: account '%s' not configured for this user.", filename, cfg.account_name)
                 continue

@@ -4,7 +4,7 @@
 import json
 import re
 import logging
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 from thefuzz import process as fuzzy_process
 
@@ -61,6 +61,11 @@ def get_category_by_fuzzy_matching(remark: str, user_categories: dict) -> int | 
     return None
 
 
+# ponytail: single INSERT statement can grow unwieldy well past this; chunk
+# large statements rather than tune for an untested upper bound.
+_batch_size = 1000
+
+
 def process_and_insert_transactions(db: Session, transactions: list, user_id: int) -> int:
     """Insert the transactions that aren't already stored for this user.
 
@@ -68,8 +73,12 @@ def process_and_insert_transactions(db: Session, transactions: list, user_id: in
     content, so re-importing a statement produces the keys already on file).
     The preloaded set makes that a cheap in-memory check, but it is only an
     optimisation -- the (user_id, unique_key) unique constraint is what actually
-    guarantees no duplicates, and a row is inserted one at a time so a
-    constraint hit skips just that row rather than losing the whole import.
+    guarantees no duplicates. Rows are inserted with one bulk
+    INSERT ... ON CONFLICT DO NOTHING (chunked) rather than one round-trip per
+    row: with the DB on a different host from the app server, a per-row
+    savepoint+flush turned a few-hundred-row statement into minutes of network
+    latency. The bulk statement keeps the DB constraint as the real backstop
+    while paying that latency once (or once per chunk) instead of once per row.
     """
     existing_unique_keys = {res[0] for res in db.query(Transaction.unique_key).filter(Transaction.user_id == user_id).all()}
 
@@ -77,7 +86,7 @@ def process_and_insert_transactions(db: Session, transactions: list, user_id: in
     user_categories_db = db.query(Category).filter(Category.user_id == user_id).all()
     user_categories_map = {cat.id: cat.name for cat in user_categories_db}
 
-    inserted_count = 0
+    rows_to_insert = []
     newly_found_categories = set()
 
     for txn_data in sorted(transactions, key=lambda x: x['txn_date']):
@@ -121,23 +130,23 @@ def process_and_insert_transactions(db: Session, transactions: list, user_id: in
                 detected_category_id = misc_cat_id
 
         raw_data_json_str = txn_data.pop('raw_data', '{}')
-        txn = Transaction(**txn_data, user_id=user_id, category_id=detected_category_id, merchant_id=detected_merchant_id, raw_data=json.loads(raw_data_json_str))
-
-        # Flush per row inside a savepoint: if the key already exists despite the
-        # in-memory check (a concurrent upload, or a key the check couldn't see),
-        # the constraint rejects that one row and the rest of the import stands.
-        try:
-            with db.begin_nested():
-                db.add(txn)
-                db.flush()
-        except IntegrityError:
-            logger.info("Skipped an already-imported transaction (key %s) for user %d.",
-                        txn_data.get('unique_key'), user_id)
-            continue
-
-        inserted_count += 1
+        rows_to_insert.append({
+            **txn_data, "user_id": user_id, "category_id": detected_category_id,
+            "merchant_id": detected_merchant_id, "raw_data": json.loads(raw_data_json_str),
+        })
+        # A duplicate within this same file (two rows landing on the same key)
+        # must also be skipped against each other, not just against the DB.
         if txn_data.get('unique_key'):
             existing_unique_keys.add(txn_data['unique_key'])
+
+    inserted_count = 0
+    for i in range(0, len(rows_to_insert), _batch_size):
+        batch = rows_to_insert[i:i + _batch_size]
+        stmt = pg_insert(Transaction).values(batch).on_conflict_do_nothing(
+            index_elements=["user_id", "unique_key"]
+        )
+        result = db.execute(stmt)
+        inserted_count += result.rowcount
 
     for cat_name in newly_found_categories:
         alert_crud.create_new_category_alert(db, user_id=user_id, category_name=cat_name)
