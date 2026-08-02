@@ -41,6 +41,4 @@ class BankConfig:
     desc_col: tuple
     debit_col: tuple
     credit_col: tuple
-    ref_col: Optional[tuple] = None
-    unique_id_col: Optional[tuple] = None
     signature_columns: tuple = ()     # distinctive header names used to detect this bank

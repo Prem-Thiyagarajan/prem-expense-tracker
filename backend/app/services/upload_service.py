@@ -4,6 +4,7 @@
 import json
 import re
 import logging
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from thefuzz import process as fuzzy_process
 
@@ -61,7 +62,16 @@ def get_category_by_fuzzy_matching(remark: str, user_categories: dict) -> int | 
 
 
 def process_and_insert_transactions(db: Session, transactions: list, user_id: int) -> int:
-    existing_unique_keys = {res[0] for res in db.query(Transaction.unique_key).filter(Transaction.user_id == user_id, Transaction.unique_key.isnot(None)).all()}
+    """Insert the transactions that aren't already stored for this user.
+
+    Skipping is driven by `unique_key` (built in parsing.keys from transaction
+    content, so re-importing a statement produces the keys already on file).
+    The preloaded set makes that a cheap in-memory check, but it is only an
+    optimisation -- the (user_id, unique_key) unique constraint is what actually
+    guarantees no duplicates, and a row is inserted one at a time so a
+    constraint hit skips just that row rather than losing the whole import.
+    """
+    existing_unique_keys = {res[0] for res in db.query(Transaction.unique_key).filter(Transaction.user_id == user_id).all()}
 
     merchants_map = {m.name: m.id for m in db.query(Merchant).filter(Merchant.user_id == user_id).all()}
     user_categories_db = db.query(Category).filter(Category.user_id == user_id).all()
@@ -112,9 +122,20 @@ def process_and_insert_transactions(db: Session, transactions: list, user_id: in
 
         raw_data_json_str = txn_data.pop('raw_data', '{}')
         txn = Transaction(**txn_data, user_id=user_id, category_id=detected_category_id, merchant_id=detected_merchant_id, raw_data=json.loads(raw_data_json_str))
-        db.add(txn)
-        inserted_count += 1
 
+        # Flush per row inside a savepoint: if the key already exists despite the
+        # in-memory check (a concurrent upload, or a key the check couldn't see),
+        # the constraint rejects that one row and the rest of the import stands.
+        try:
+            with db.begin_nested():
+                db.add(txn)
+                db.flush()
+        except IntegrityError:
+            logger.info("Skipped an already-imported transaction (key %s) for user %d.",
+                        txn_data.get('unique_key'), user_id)
+            continue
+
+        inserted_count += 1
         if txn_data.get('unique_key'):
             existing_unique_keys.add(txn_data['unique_key'])
 

@@ -13,6 +13,7 @@ from app.services.parsing.parsers import (  # noqa: E402
     _reconstruct_pdf_grid, promote_header, parse_generic,
 )
 from app.services.parsing.configs import BANK_CONFIGS  # noqa: E402
+from app.services.parsing.keys import KeyBuilder  # noqa: E402
 
 HDFC_COLS = "Date,Narration,Chq/RefNo,Withdrawal Amt,Deposit Amt\n"
 HDFC_ROWS = (
@@ -36,7 +37,7 @@ def test_hdfc_by_filename():
     assert debit["type"] == "debit" and debit["amount"] == 250.0
     assert debit["account_id"] == 7 and debit["source"] == "HDFC"
     assert debit["upi_ref"] == "123456789012"
-    assert debit["unique_key"].startswith("HDFC-REF1-")
+    assert debit["unique_key"].startswith("v2-7-")
     assert credit["type"] == "credit" and credit["amount"] == 50000.0
 
 
@@ -192,7 +193,7 @@ def test_pdf_word_reconstruction_borderless_icici():
     assert detected is not None, grid
     fmt, header_idx = detected
     assert fmt == "icici", (detected, grid[0])
-    txns = parse_generic(promote_header(df, header_idx), BANK_CONFIGS["icici"], account_id=8)
+    txns = parse_generic(promote_header(df, header_idx), BANK_CONFIGS["icici"], account_id=8, keys=KeyBuilder())
     assert len(txns) == 2, grid
     debit, credit = txns
     assert debit["type"] == "debit" and debit["amount"] == 20.0, grid
@@ -206,6 +207,94 @@ def test_paytm():
     t = txns[0]
     assert t["type"] == "debit" and t["amount"] == 250.0
     assert t["account_id"] == 7 and t["source"] == "HDFC Bank"
+
+
+def test_paytm_amount_with_thousands_comma_is_not_dropped():
+    # Paytm writes amounts >= 1,000 as "1,270.00". pd.to_numeric can't parse
+    # the comma and returns NaN, which used to be read as "no amount" and
+    # silently dropped the row -- the real cause of the missing-transactions bug.
+    paytm = (
+        "Date,Time,Transaction Details,Your Account,Amount,UPI Ref No.,Remarks\n"
+        '01/07/2025,10:30:00,Transferred to Self,HDFC Bank XX1234,"36,201",123456789012,\n'
+    ).encode()
+    txns = parsing.parse_statement("paytm_july.csv", paytm, ACCOUNTS)
+    assert len(txns) == 1, txns
+    assert txns[0]["amount"] == 36201.0
+
+
+def test_paytm_builds_a_key():
+    # Paytm rows used to get unique_key=None -- Postgres never collides NULLs,
+    # so the (user_id, unique_key) constraint did nothing for re-uploads.
+    txns = parsing.parse_statement("paytm_july.csv", PAYTM_CSV, ACCOUNTS)
+    assert txns[0]["unique_key"], "Paytm row must not get a null/empty key"
+
+
+def test_reparsing_a_statement_yields_identical_keys():
+    # The whole point of a content-based key: re-uploading the same file must
+    # produce the exact same keys, so the DB constraint treats it as a no-op.
+    keys1 = [t["unique_key"] for t in parsing.parse_statement("hdfc_july.csv", HDFC_CSV, ACCOUNTS)]
+    keys2 = [t["unique_key"] for t in parsing.parse_statement("hdfc_july.csv", HDFC_CSV, ACCOUNTS)]
+    assert keys1 == keys2 and len(keys1) == 2
+
+
+def test_keys_ignore_row_position():
+    # A re-export with a different row order/date range must still key the
+    # same transaction identically -- position must play no part in the key.
+    reordered = (
+        HDFC_COLS +
+        "02/07/2025,SALARY CREDIT,REF2,,50000.00\n"
+        "01/07/2025,UPI-ZOMATO-123456789012-PAYMENT,REF1,250.00,\n"
+    ).encode()
+    original_keys = {t["unique_key"] for t in parsing.parse_statement("hdfc_july.csv", HDFC_CSV, ACCOUNTS)}
+    reordered_keys = {t["unique_key"] for t in parsing.parse_statement("hdfc_july.csv", reordered, ACCOUNTS)}
+    assert original_keys == reordered_keys
+
+
+def test_repeated_identical_transactions_both_survive():
+    # Two genuinely separate transactions -- same day, same amount, no
+    # reference -- must both survive with distinct keys, not collapse into one.
+    icici = (
+        'S No.,Transaction Date,Cheque Number,Transaction Remarks,'
+        'Withdrawal Amount (INR),Deposit Amount (INR),Balance (INR)\n'
+        '1,01.07.2026,,METRO CARD RECHARGE,"20.00",,"980.00"\n'
+        '2,01.07.2026,,METRO CARD RECHARGE,"20.00",,"960.00"\n'
+    ).encode()
+    txns = parsing.parse_statement("icici_stmt.csv", icici, {"ICICI Bank": 5})
+    assert len(txns) == 2, txns
+    keys = {t["unique_key"] for t in txns}
+    assert len(keys) == 2, "repeated transactions must not collapse onto one key"
+
+
+def test_blank_reference_does_not_merge_unrelated_rows():
+    # Blank cheque/ref cells used to stringify to "-"/"nan" and become the key
+    # itself, colliding unrelated rows. Different descriptions -> different keys.
+    icici = (
+        'S No.,Transaction Date,Cheque Number,Transaction Remarks,'
+        'Withdrawal Amount (INR),Deposit Amount (INR),Balance (INR)\n'
+        '1,01.07.2026,,ATM WITHDRAWAL,"500.00",,"500.00"\n'
+        '2,02.07.2026,,CASH DEPOSIT,,"500.00","1000.00"\n'
+    ).encode()
+    txns = parsing.parse_statement("icici_stmt.csv", icici, {"ICICI Bank": 5})
+    assert len(txns) == 2, txns
+    assert txns[0]["unique_key"] != txns[1]["unique_key"]
+
+
+def test_keybuilder_shared_across_grids_of_one_file():
+    # Regression test for the cross-page collision bug: a PDF/Excel file yields
+    # one grid per page/sheet. If each grid got its own KeyBuilder, occurrence
+    # numbering would reset per grid and two genuine repeats landing on
+    # different grids would get the SAME key and one would be dropped as a
+    # "duplicate" at insert time. One KeyBuilder must be shared per file.
+    keys = KeyBuilder()
+    row = dict(account_id=1, txn_date=pd.Timestamp("2026-07-01"), amount=20.0,
+               txn_type="debit", upi_ref=None, description="METRO CARD RECHARGE")
+    key_from_grid_1 = keys.build(**row)
+    key_from_grid_2 = keys.build(**row)  # same builder, simulating the next grid
+    assert key_from_grid_1 != key_from_grid_2, "second occurrence must get a distinct suffix"
+
+    # The bug: a FRESH builder per grid re-collides them.
+    fresh_builder_key = KeyBuilder().build(**row)
+    assert fresh_builder_key == key_from_grid_1, "sanity: fresh builder reproduces occurrence 0"
 
 
 if __name__ == "__main__":

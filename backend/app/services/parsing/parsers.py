@@ -10,6 +10,7 @@ from datetime import datetime
 import pandas as pd
 
 from .base import BankConfig, ParsedTxn
+from .keys import KeyBuilder, extract_upi_ref, normalize_ref
 
 logger = logging.getLogger(__name__)
 
@@ -314,12 +315,16 @@ def promote_header(grid: pd.DataFrame, header_idx: int) -> pd.DataFrame:
     return df
 
 
-def parse_generic(df: pd.DataFrame, config: BankConfig, account_id: int) -> list[ParsedTxn]:
+def parse_generic(df: pd.DataFrame, config: BankConfig, account_id: int, keys: KeyBuilder) -> list[ParsedTxn]:
     """Parse a separate-debit/credit-column statement per a BankConfig.
 
     Resolves each field to a real column via its aliases. If a required column
     can't be found, raises ValueError naming the field and the columns present --
     a loud, actionable failure instead of silently returning zero transactions.
+
+    `keys` must be shared across every grid of the same file (see parse_statement) --
+    a fresh builder per grid would renumber occurrences per page/sheet instead of
+    per file, colliding genuine repeats that happen to land on different pages.
     """
     df = df.copy()
     cols = list(df.columns)
@@ -327,8 +332,6 @@ def parse_generic(df: pd.DataFrame, config: BankConfig, account_id: int) -> list
     desc_col = _find_col(config.desc_col, cols)
     debit_col = _find_col(config.debit_col, cols)
     credit_col = _find_col(config.credit_col, cols)
-    ref_col = _find_col(config.ref_col, cols) if config.ref_col else None
-    uid_col = _find_col(config.unique_id_col, cols) if config.unique_id_col else None
 
     missing = [name for name, col in (("date", date_col), ("description", desc_col),
                                       ("debit", debit_col), ("credit", credit_col)) if col is None]
@@ -339,7 +342,7 @@ def parse_generic(df: pd.DataFrame, config: BankConfig, account_id: int) -> list
         )
 
     transactions: list[ParsedTxn] = []
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         if pd.isna(row.get(date_col)):
             continue
         try:
@@ -356,13 +359,11 @@ def parse_generic(df: pd.DataFrame, config: BankConfig, account_id: int) -> list
 
             txn_date = pd.to_datetime(row[date_col], dayfirst=True)
             description = str(row[desc_col])
-            upi_match = re.search(r'(\d{12})', description)
-            upi_ref = upi_match.group(1) if ('UPI' in description and upi_match) else None
-            uid_part = (
-                str(row[uid_col]) if uid_col and pd.notna(row.get(uid_col))
-                else (str(row.get(ref_col, '')) if ref_col else f"{description[:10]}-{index}")
+            upi_ref = extract_upi_ref(description)
+            unique_key = keys.build(
+                account_id=account_id, txn_date=txn_date, amount=amount,
+                txn_type=txn_type, upi_ref=upi_ref, description=description,
             )
-            unique_key = f"{config.source}-{uid_part}-{txn_date.strftime('%Y%m%d')}-{amount:.2f}"
 
             transactions.append(ParsedTxn(
                 txn_date=txn_date, description=description, amount=amount, type=txn_type,
@@ -374,8 +375,11 @@ def parse_generic(df: pd.DataFrame, config: BankConfig, account_id: int) -> list
     return transactions
 
 
-def parse_paytm(df: pd.DataFrame, account_map: dict) -> list[ParsedTxn]:
-    """Parse a Paytm wallet statement (single signed Amount column, per-row account)."""
+def parse_paytm(df: pd.DataFrame, account_map: dict, keys: KeyBuilder) -> list[ParsedTxn]:
+    """Parse a Paytm wallet statement (single signed Amount column, per-row account).
+
+    `keys` must be shared across every grid of the same file -- see parse_generic.
+    """
     df = df.copy()
     df.columns = [c.strip() for c in df.columns]
 
@@ -390,18 +394,25 @@ def parse_paytm(df: pd.DataFrame, account_map: dict) -> list[ParsedTxn]:
                 continue
 
             source_provider = next((name for name, acc_id in account_map.items() if acc_id == matched_account), "Unknown")
-            amount_val = pd.to_numeric(row.get('Amount'), errors='coerce')
+            # Paytm writes amounts >= 1,000 with a thousands comma ("1,270.00");
+            # pd.to_numeric can't parse that directly and silently returns NaN,
+            # which the old code then read as "no amount" and dropped the row.
+            amount_val = pd.to_numeric(str(row.get('Amount')).replace(',', ''), errors='coerce')
             if pd.isna(amount_val) or amount_val == 0:
                 continue
             amount, txn_type = float(abs(amount_val)), ('credit' if amount_val > 0 else 'debit')
             txn_date = datetime.strptime(f"{row['Date']} {row['Time']}", '%d/%m/%Y %H:%M:%S')
             description = str(row['Transaction Details'])
-            upi_ref = str(int(row['UPI Ref No.'])) if pd.notna(row['UPI Ref No.']) else None
+            upi_ref = normalize_ref(row.get('UPI Ref No.'))
+            unique_key = keys.build(
+                account_id=matched_account, txn_date=txn_date, amount=amount,
+                txn_type=txn_type, upi_ref=upi_ref, description=description,
+            )
 
             transactions.append(ParsedTxn(
                 txn_date=txn_date, description=description, amount=amount, type=txn_type,
                 account_id=matched_account, source=source_provider, upi_ref=upi_ref,
-                unique_key=None, raw_data=row.to_json(date_format='iso'),
+                unique_key=unique_key, raw_data=row.to_json(date_format='iso'),
             ))
         except Exception:
             logger.warning("Skipping unparseable Paytm row", exc_info=True)

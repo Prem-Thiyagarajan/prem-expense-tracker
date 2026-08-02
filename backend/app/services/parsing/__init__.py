@@ -11,6 +11,7 @@ import logging
 
 from .base import ParsedTxn, BankConfig
 from .configs import BANK_CONFIGS
+from .keys import KeyBuilder
 from .parsers import (
     read_grids, parse_generic, parse_paytm, find_header_row, promote_header,
     _guess_header_cols, MAX_ROWS_PER_SHEET,
@@ -58,6 +59,11 @@ def parse_statement(filename: str, raw: bytes, account_map: dict) -> list[Parsed
     Raises ValueError for unsupported file types or oversized sheets.
     """
     grids = read_grids(filename, raw)
+    # Shared across every grid in this file (a PDF yields one grid per page, an
+    # Excel workbook one per sheet) so occurrence numbering for repeated
+    # no-reference transactions doesn't reset -- and collide -- at each page/sheet
+    # boundary. See KeyBuilder's docstring.
+    keys = KeyBuilder()
     out: list[ParsedTxn] = []
     # (row_count, columns) per unrecognized grid -- row_count ranks candidates: a real
     # transaction table has dozens of rows, a stray legend/notes block has a handful.
@@ -75,14 +81,14 @@ def parse_statement(filename: str, raw: bytes, account_map: dict) -> list[Parsed
         fmt, header_idx = detected
         df = promote_header(grid, header_idx)
         if fmt == 'paytm':
-            out.extend(parse_paytm(df, account_map))
+            out.extend(parse_paytm(df, account_map, keys))
         else:
             cfg = BANK_CONFIGS[fmt]
             account_id = account_map.get(cfg.account_name)
             if account_id is None:
                 logger.info("Skipping %s: account '%s' not configured for this user.", filename, cfg.account_name)
                 continue
-            out.extend(parse_generic(df, cfg, account_id))
+            out.extend(parse_generic(df, cfg, account_id, keys))
 
     # Loud, actionable failure: nothing parsed AND at least one sheet was unrecognized.
     # (A recognized-but-unconfigured account is a deliberate skip, not surfaced here.)

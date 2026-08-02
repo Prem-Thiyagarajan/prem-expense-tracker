@@ -64,11 +64,16 @@ def get_dashboard_data(db: Session, month: str, user_id: int):
     top_spending_categories = [{"id": cat_id, "category": cat_name, "amount": float(total), "icon_name": icon_name} for cat_id, cat_name, total, icon_name in top_categories_query]
     
     # --- CUMULATIVE SPEND (Raw SQL must also be scoped) ---
+    # Range comparison on txn_date, not to_char(txn_date, ...) = :month -- a
+    # function wrapped around the column can't use the (user_id, txn_date)
+    # index, so it fell back to scanning every one of the user's transactions
+    # (the actual cause of the slow month-navigation clicks).
     cumulative_spend_query = text("""
         WITH daily_sums AS (
             SELECT date_trunc('day', txn_date)::date AS day, SUM(amount) AS daily_total
             FROM transactions
-            WHERE user_id = :user_id AND type = 'debit' AND to_char(txn_date, 'YYYY-MM') = :month
+            WHERE user_id = :user_id AND type = 'debit'
+            AND txn_date >= :month_start AND txn_date < :next_month_start
             AND id NOT IN :excluded_ids
             GROUP BY 1
         )
@@ -87,9 +92,9 @@ def get_dashboard_data(db: Session, month: str, user_id: int):
         cumulative_spend_query, 
         {
             "user_id": user_id, #! PASS user_id to query
-            "month_start": month_start.strftime("%Y-%m-%d"), 
-            "today": today.strftime("%Y-%m-%d"), 
-            "month": month,
+            "month_start": month_start.strftime("%Y-%m-%d"),
+            "next_month_start": next_month_start.strftime("%Y-%m-%d"),
+            "today": today.strftime("%Y-%m-%d"),
             "excluded_ids": tuple(transactions_to_exclude) if transactions_to_exclude else (0,)
         }
     ).fetchall()
