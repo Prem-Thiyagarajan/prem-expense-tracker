@@ -6,3 +6,4 @@ from .merchant import Merchant
 from .goal import Goal
 from .tag import Tag
 from .alert import Alert
+from .subscription import Subscription
