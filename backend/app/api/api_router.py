@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from . import (
     account_router, alert_router, analytics_router, budget_plan_router,
     category_router, dashboard_router, goal_router, merchant_router,
+    subscription_router,
     tag_router, transaction_router, transaction_tag_router,
     upload_router,
     auth_router,
@@ -35,6 +36,7 @@ api_router.include_router(account_router.router, prefix="/accounts")
 api_router.include_router(category_router.router, prefix="/categories")
 api_router.include_router(merchant_router.router, prefix="/merchants")
 api_router.include_router(goal_router.router, prefix="/goals")
+api_router.include_router(subscription_router.router, prefix="/subscriptions")
 api_router.include_router(tag_router.router, prefix="/tags")
 api_router.include_router(transaction_tag_router.router, prefix="/transaction-tags")
 api_router.include_router(alert_router.router, prefix="/alerts")
