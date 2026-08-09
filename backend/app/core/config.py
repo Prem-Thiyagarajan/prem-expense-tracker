@@ -4,26 +4,41 @@ class Settings(BaseSettings):
     DATABASE_URL: str
 
     # ── Assistant (in-app chatbot) ───────────────────────────────────────────
-    # Two independent providers. Chat and voice must be able to fail separately,
-    # so neither key is allowed to break the other feature:
-    #
-    #   NVIDIA_API_KEY unset -> chat unavailable, app still runs
-    #   GROQ_API_KEY   unset -> voice unavailable, chat fully functional
-    #
-    # Both are Optional for exactly that reason. A missing key is a *degraded
+    # Provider keys. Both are Optional on purpose: a missing key is a *degraded
     # capability* reported by GET /assistant/health, never a boot failure — the
     # rest of the API (transactions, budgets, auth) must keep serving.
-    NVIDIA_API_KEY: str | None = None
+    #
+    #   both unset          -> chat unavailable, app still runs
+    #   GROQ_API_KEY unset  -> voice unavailable; chat falls to NVIDIA
+    #   NVIDIA_API_KEY unset-> chat is Groq-only (no fallback), voice unaffected
     GROQ_API_KEY: str | None = None
+    NVIDIA_API_KEY: str | None = None
 
-    # Non-secret provider config. Defaults are the public endpoints; override
-    # via env only if a provider moves or you pin a different model.
-    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
-    ASSISTANT_MODEL: str = "openai/gpt-oss-120b"
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
+    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+
+    # Both providers serve the same model under the same id, which is what makes
+    # transparent failover possible without a second prompt or tool schema.
+    ASSISTANT_MODEL: str = "openai/gpt-oss-120b"
     WHISPER_MODEL: str = "whisper-large-v3-turbo"
-    # low | medium | high. gpt-oss thinks before answering and that time is all
-    # time-to-first-token, which on a phone reads as the app being broken.
+
+    # ── Chat failover ────────────────────────────────────────────────────────
+    # Comma-separated, tried in order. Groq first because measured
+    # time-to-first-token is ~0.5-1s against NVIDIA's 0.7-45s (and occasionally
+    # never); NVIDIA second because Groq's free tier caps at 8k tokens/minute
+    # ORG-WIDE, so overflow needs somewhere to go. Two vendors also means a
+    # single provider outage degrades chat rather than removing it.
+    CHAT_PROVIDER_ORDER: str = "groq,nvidia"
+
+    # Per-provider read timeouts. Deliberately asymmetric: Groq answers in under
+    # a second, so a short ceiling means we give up and fail over quickly instead
+    # of making the user wait. NVIDIA is the slow-but-usually-works fallback and
+    # gets room to breathe — measured up to 45s.
+    GROQ_READ_TIMEOUT: float = 25.0
+    NVIDIA_READ_TIMEOUT: float = 120.0
+
+    # low | medium | high. gpt-oss thinks before answering and that time lands
+    # entirely in time-to-first-token, which on a phone reads as a hung app.
     ASSISTANT_REASONING_EFFORT: str = "low"
 
     # Hard ceilings. MAX_AUDIO_SECONDS mirrors the client's 60s recorder stop —
