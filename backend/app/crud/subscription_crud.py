@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.subscription import Subscription
-from app.schemas.subscription_schema import SubscriptionCreate, SubscriptionUpdate
+from app.schemas.subscription_schema import SubscriptionCreate, SubscriptionOut, SubscriptionUpdate
 from app.services.subscription_service import compute_status, previous_occurrence
 
 
@@ -65,13 +65,20 @@ def update_subscription(db: Session, sub_id: int, sub_in: SubscriptionUpdate, us
     return _attach_status(sub, date.today())
 
 
-def delete_subscription(db: Session, sub_id: int, user_id: int) -> Subscription:
+def delete_subscription(db: Session, sub_id: int, user_id: int) -> SubscriptionOut:
     sub = db.query(Subscription).filter(Subscription.id == sub_id, Subscription.user_id == user_id).first()
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found.")
+    _attach_status(sub, date.today())
+    # Snapshot the response before delete/commit — commit()'s default
+    # expire_on_commit wipes the ORM instance's attributes (including the
+    # transient ones just attached above), so returning `sub` itself after
+    # committing was turning every successful delete into a spurious 500
+    # (FastAPI's response serialization found upcoming_due_date "missing").
+    snapshot = SubscriptionOut.model_validate(sub)
     db.delete(sub)
     db.commit()
-    return sub
+    return snapshot
 
 
 def mark_paid(db: Session, sub_id: int, user_id: int, paid_for_date: Optional[date]) -> Subscription:
