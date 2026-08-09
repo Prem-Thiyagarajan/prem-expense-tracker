@@ -35,124 +35,62 @@ MAX_TXN_ROWS = 25
 
 
 # ── Tool schemas (OpenAI-compatible function calling) ────────────────────────
+# Descriptions are terse on purpose: this block is re-sent on every request and
+# every model round-trip, so wording here is a recurring token cost against
+# Groq's 8k/minute org-wide cap. Say what the tool returns and when to pick it;
+# nothing else.
+
+_MONTH = {"month": {"type": "string", "description": "YYYY-MM"}}
+
+
+def _fn(name: str, description: str, properties: dict, required: list[str]) -> dict:
+    return {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description,
+            "parameters": {"type": "object", "properties": properties, "required": required},
+        },
+    }
+
 
 TOOL_SCHEMAS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_month_summary",
-            "description": (
-                "Headline spending figures for one month: total spent, change vs "
-                "last month, daily average, projected month-end total, and the top "
-                "spending categories. Use this for 'how am I doing this month'."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "month": {
-                        "type": "string",
-                        "description": "Month as YYYY-MM, e.g. 2026-08.",
-                    }
-                },
-                "required": ["month"],
-            },
+    _fn(
+        "get_month_summary",
+        "One month's totals: spent, vs last month, daily avg, projected total, top categories.",
+        _MONTH,
+        ["month"],
+    ),
+    _fn(
+        "get_budget_status",
+        "Budget for a month: per-category limit, spent, remaining, % used, days to depletion. "
+        "If no plan exists, returns suggested limits.",
+        _MONTH,
+        ["month"],
+    ),
+    _fn(
+        "get_spending_analytics",
+        "Multi-month patterns: category split, monthly totals, repeat habits. For trends, not one month.",
+        {"time_period": {"type": "string", "enum": ["3m", "6m", "1y", "all"]}},
+        [],
+    ),
+    _fn(
+        "search_transactions",
+        "Individual transactions, newest first, max 25. For a merchant, a date, or examples behind a number.",
+        {
+            "search_term": {"type": "string"},
+            "category_id": {"type": "integer"},
+            "account_id": {"type": "integer"},
+            "start_date": {"type": "string", "description": "YYYY-MM-DD"},
+            "end_date": {"type": "string", "description": "YYYY-MM-DD"},
+            "type": {"type": "string", "enum": ["debit", "credit"]},
+            "limit": {"type": "integer", "description": "1-25"},
         },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_budget_status",
-            "description": (
-                "This month's budget plan: per-category limit, spent, remaining, "
-                "percent used and projected days until the category runs out. If no "
-                "plan exists yet, returns suggested limits based on recent months."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "month": {"type": "string", "description": "Month as YYYY-MM."}
-                },
-                "required": ["month"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_spending_analytics",
-            "description": (
-                "Longer-run patterns across several months: category distribution, "
-                "month-by-month totals, and repeat-purchase habits. Use for trends "
-                "and comparisons over time, not for a single month's total."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "time_period": {
-                        "type": "string",
-                        "enum": ["3m", "6m", "1y", "all"],
-                        "description": "Window to analyse. Defaults to 6m.",
-                    }
-                },
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "search_transactions",
-            "description": (
-                "Find individual transactions. Use when the user asks about a "
-                "specific merchant, a specific day, or wants examples backing up a "
-                "number. Returns at most 25 rows, newest first."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "search_term": {
-                        "type": "string",
-                        "description": "Text to match in the description/merchant.",
-                    },
-                    "category_id": {"type": "integer"},
-                    "account_id": {"type": "integer"},
-                    "start_date": {"type": "string", "description": "YYYY-MM-DD inclusive."},
-                    "end_date": {"type": "string", "description": "YYYY-MM-DD inclusive."},
-                    "type": {"type": "string", "enum": ["debit", "credit"]},
-                    "limit": {"type": "integer", "description": "Max rows, 1-25."},
-                },
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "list_categories",
-            "description": (
-                "The user's spending categories with their ids. Call this before "
-                "using category_id in another tool, or to answer 'what categories "
-                "do I have'."
-            ),
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "list_accounts",
-            "description": "The user's bank/card accounts with their ids.",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "list_tags",
-            "description": "The user's transaction tags with their ids.",
-            "parameters": {"type": "object", "properties": {}, "required": []},
-        },
-    },
+        [],
+    ),
+    _fn("list_categories", "Category names and ids. Call before using category_id.", {}, []),
+    _fn("list_accounts", "Account names and ids.", {}, []),
+    _fn("list_tags", "Tag names and ids.", {}, []),
 ]
 
 

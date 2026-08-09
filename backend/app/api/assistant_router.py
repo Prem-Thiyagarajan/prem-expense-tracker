@@ -139,6 +139,14 @@ async def _run_agent(
             tool_calls: dict[int, dict[str, Any]] = {}
 
             async for chunk in providers.stream_chat(messages, tools=TOOL_SCHEMAS):
+                # The provider layer announces a drop to the fallback in-stream.
+                # It is much slower, so tell the UI immediately rather than
+                # leaving the user watching a spinner for up to ~100s.
+                if "__meta__" in chunk:
+                    if chunk["__meta__"].get("fallback"):
+                        yield _sse({"type": "status", "state": "fallback"})
+                    continue
+
                 choices = chunk.get("choices") or []
                 if not choices:
                     continue
@@ -248,7 +256,11 @@ async def _run_agent(
 
 
 @router.post("/chat")
-@limiter.limit("20/minute", key_func=user_rate_key)
+# 20/min was set before the provider capacity was known and was fiction: Groq's
+# free tier allows roughly 5 questions per MINUTE across the whole organisation,
+# not per user. This cap's real job is stopping one user consuming that shared
+# budget alone; overflow beyond it is absorbed by the NVIDIA fallback.
+@limiter.limit("12/minute", key_func=user_rate_key)
 async def chat(
     request: Request,
     body: ChatRequest,
