@@ -36,6 +36,10 @@ class SubscriptionUpdate(BaseModel):
     amount: Optional[float] = None
     interval: Optional[SubscriptionInterval] = None
     is_active: Optional[bool] = None
+    # Editable after creation too — e.g. correcting a mistyped first date.
+    # Changing these directly shifts every future computed due date.
+    first_due_date: Optional[date] = None
+    last_paid_date: Optional[date] = None
 
 
 class SubscriptionOut(SubscriptionBase):

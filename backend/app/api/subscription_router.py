@@ -75,3 +75,13 @@ def mark_subscription_paid(
     return subscription_crud.mark_paid(
         db, sub_id=subscription_id, user_id=current_user.id, paid_for_date=body.paid_for_date
     )
+
+
+@router.put("/{subscription_id}/unpay", response_model=SubscriptionOut)
+def unmark_subscription_paid(
+    subscription_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user),
+):
+    """Undoes the most recent "mark as paid" — for correcting a mistaken tap."""
+    return subscription_crud.unpay(db, sub_id=subscription_id, user_id=current_user.id)

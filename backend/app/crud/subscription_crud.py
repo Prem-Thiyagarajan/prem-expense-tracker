@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.subscription import Subscription
 from app.schemas.subscription_schema import SubscriptionCreate, SubscriptionUpdate
-from app.services.subscription_service import compute_status
+from app.services.subscription_service import compute_status, previous_occurrence
 
 
 def _attach_status(sub: Subscription, today: date) -> Subscription:
@@ -92,3 +92,21 @@ def mark_paid(db: Session, sub_id: int, user_id: int, paid_for_date: Optional[da
     db.commit()
     db.refresh(sub)
     return _attach_status(sub, today)
+
+
+def unpay(db: Session, sub_id: int, user_id: int) -> Subscription:
+    """Undoes the most recent "mark as paid" — steps `last_paid_date` back one cycle, or clears it entirely."""
+    sub = db.query(Subscription).filter(Subscription.id == sub_id, Subscription.user_id == user_id).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found.")
+    if sub.last_paid_date is None:
+        raise HTTPException(status_code=400, detail="Nothing to undo — no cycle has been confirmed paid yet.")
+
+    if sub.last_paid_date <= sub.first_due_date:
+        sub.last_paid_date = None
+    else:
+        sub.last_paid_date = previous_occurrence(sub.last_paid_date, sub.interval)
+
+    db.commit()
+    db.refresh(sub)
+    return _attach_status(sub, date.today())
