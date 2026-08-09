@@ -30,6 +30,15 @@ def next_occurrence(d: date, interval: str) -> date:
     raise ValueError(f"Unknown subscription interval: {interval}")
 
 
+def previous_occurrence(d: date, interval: str) -> date:
+    """The due date one cycle before `d` — the inverse of next_occurrence, used to undo a mistaken "mark as paid"."""
+    if interval in INTERVAL_MONTHS:
+        return _add_months(d, -INTERVAL_MONTHS[interval])
+    if interval in INTERVAL_DAYS:
+        return d - timedelta(days=INTERVAL_DAYS[interval])
+    raise ValueError(f"Unknown subscription interval: {interval}")
+
+
 def compute_status(
     first_due_date: date,
     interval: str,

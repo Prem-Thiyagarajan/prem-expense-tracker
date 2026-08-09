@@ -58,23 +58,27 @@ def check_and_create_budget_alerts(db: Session, user_id: int, transaction: Trans
     # Calculate the percentage of the budget spent
     spent_percentage = (total_spend / Decimal(goal.limit_amount)) * 100
 
-    # Check against each threshold
+    # BUDGET_THRESHOLDS is ordered highest-to-lowest, so the first one
+    # `spent_percentage` satisfies is the current tier — always stop there,
+    # whether we need to create a fresh alert or one's already pending.
+    # Deliberately NOT breaking here used to let a still-true 100% fall
+    # through to (re-)fire a stale 90%/75% underneath it once the 100% alert
+    # had been dismissed — the existence check below used to ignore
+    # acknowledgment entirely, so a dismissed alert permanently blocked that
+    # threshold from ever re-firing instead of just suppressing duplicates.
     for threshold in BUDGET_THRESHOLDS:
         if spent_percentage >= threshold:
-            # Check if an alert for this goal and threshold already exists
             alert_exists = db.query(Alert).filter(
                 Alert.user_id == user_id,
                 Alert.goal_id == goal.id,
-                Alert.threshold_percentage == threshold
+                Alert.threshold_percentage == threshold,
+                Alert.is_acknowledged == False
             ).first()
 
-            # If it doesn't exist, create it
             if not alert_exists:
                 alert_crud.create_alert(db, user_id=user_id, alert_in={
                     "goal_id": goal.id,
                     "threshold_percentage": threshold,
                     "is_acknowledged": False
                 })
-                # We only create one alert at a time to avoid spamming.
-                # The next transaction will trigger the check for the next threshold.
-                break
+            break
