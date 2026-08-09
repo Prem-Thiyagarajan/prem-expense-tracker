@@ -1,7 +1,8 @@
 # File: app/api/api_router.py
 from fastapi import APIRouter
 from . import (
-    account_router, alert_router, analytics_router, budget_plan_router,
+    account_router, alert_router, analytics_router, assistant_router,
+    budget_plan_router,
     category_router, dashboard_router, goal_router, merchant_router,
     subscription_router,
     tag_router, transaction_router, transaction_tag_router,
@@ -29,6 +30,7 @@ api_router.include_router(dashboard_router.router, prefix="/dashboard")
 api_router.include_router(budget_plan_router.router, prefix="/budgets")
 api_router.include_router(analytics_router.router, prefix="/analytics")
 api_router.include_router(upload_router.router, prefix="/settings")
+api_router.include_router(assistant_router.router, prefix="/assistant")
 
 # Core CRUD Endpoints for Individual Resources
 api_router.include_router(transaction_router.router, prefix="/transactions")
