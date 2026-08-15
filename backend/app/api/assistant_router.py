@@ -325,7 +325,13 @@ async def transcribe(
         names = [c.name for c in (category_crud.get_all_categories(db, user_id=current_user.id) or [])]
         names += [a.name for a in (account_crud.get_all_accounts(db, user_id=current_user.id) or [])]
         if names:
-            hint = "Expense tracking. Categories and accounts: " + ", ".join(names[:40]) + "."
+            # A BARE comma-separated list, deliberately not a sentence.
+            # Whisper's `prompt` biases decoding, and it will happily transcribe
+            # the prompt itself when the audio is quiet or ambiguous. An earlier
+            # version led with "Expense tracking. Categories and accounts:" and
+            # that phrase was being prepended to real user speech. A word list
+            # has no grammar for it to echo.
+            hint = ", ".join(names[:40])
     except Exception:
         logger.warning("could not build vocab hint", exc_info=True)
 
