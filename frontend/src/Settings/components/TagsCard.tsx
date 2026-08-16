@@ -1,7 +1,7 @@
 // File: src/Settings/components/TagsCard.tsx
 
 import React from 'react';
-import { Pencil, X, Plus } from "lucide-react";
+import { Pencil, X, Plus, EyeOff } from "lucide-react";
 import type { Tag } from '../../types';
 
 interface TagsCardProps {
@@ -10,6 +10,8 @@ interface TagsCardProps {
     onEdit: (tag: Tag) => void;
     onDelete: (tagId: number) => void;
 }
+
+const PAGE_ABBR: Record<string, string> = { dashboard: 'Dashboard', analytics: 'Analytics', budgets: 'Budgets' };
 
 const TagsCard: React.FC<TagsCardProps> = ({ tags = [], onAdd, onEdit, onDelete }) => {
   return (
@@ -31,7 +33,14 @@ const TagsCard: React.FC<TagsCardProps> = ({ tags = [], onAdd, onEdit, onDelete 
                 key={tag.id}
                 className="inline-flex items-center gap-2 bg-hair border-1.5 border-line rounded-chip pl-3.5 pr-2 py-2 font-heading font-bold text-xs text-ink"
               >
-                {tag.name}
+                <span className="flex flex-col">
+                  <span>{tag.name}</span>
+                  {tag.excluded_pages?.length > 0 && (
+                    <span className="flex items-center gap-1 font-body font-medium text-[9.5px] text-muted normal-case mt-0.5" title={`Hidden from ${tag.excluded_pages.map(p => PAGE_ABBR[p]).join(', ')}`}>
+                      <EyeOff size={9} /> {tag.excluded_pages.map(p => PAGE_ABBR[p]).join(', ')}
+                    </span>
+                  )}
+                </span>
                 <span className="flex items-center gap-0.5">
                   <button onClick={() => onEdit(tag)} className="p-0.5 text-muted hover:text-link">
                     <Pencil size={12} />

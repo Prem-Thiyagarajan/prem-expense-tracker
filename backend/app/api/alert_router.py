@@ -19,6 +19,15 @@ def list_unread_user_alerts(
     """Get all unread notifications for the current user."""
     return alert_crud.get_unread_alerts(db, user_id=current_user.id)
 
+@router.put("/read-all")
+def acknowledge_all_user_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_active_user)
+):
+    """Marks every unread notification as read -- "Mark all as read"."""
+    count = alert_crud.acknowledge_all_alerts(db, user_id=current_user.id)
+    return {"acknowledged": count}
+
 # ✅ --- MODIFIED ENDPOINT ---
 # Changed path to make it more RESTful
 @router.put("/{alert_id}/acknowledge", response_model=AlertOut)

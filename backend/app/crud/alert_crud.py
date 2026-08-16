@@ -104,3 +104,13 @@ def acknowledge_alert(db: Session, alert_id: int, user_id: int):
         db.commit()
         db.refresh(alert)
     return alert
+
+def acknowledge_all_alerts(db: Session, user_id: int) -> int:
+    """Marks every unread alert as read in one call -- backs the
+    notification dropdown's "Mark all as read" button."""
+    count = db.query(Alert).filter(
+        Alert.user_id == user_id,
+        Alert.is_acknowledged == False
+    ).update({"is_acknowledged": True}, synchronize_session=False)
+    db.commit()
+    return count

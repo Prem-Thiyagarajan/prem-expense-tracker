@@ -55,22 +55,45 @@ def get_unmapped_clusters(db: Session, user_id: int) -> list[dict]:
     """Groups of currently-unmapped transactions (no merchant at all yet)
     sharing a UPI handle -- the cold-start bulk-naming banner. Distinct from
     rescan_unmapped_transactions below: this never touches merchants that
-    already exist, it's purely about transactions with nothing assigned."""
-    rows = db.query(Transaction.id, Transaction.description).filter(
+    already exist, it's purely about transactions with nothing assigned.
+
+    Beyond the grouping itself, pulls amount/date context per cluster so the
+    user has more than a single (often truncated) raw string to guess a
+    category from -- a UPI handle alone frequently isn't enough."""
+    rows = db.query(
+        Transaction.id, Transaction.description, Transaction.amount, Transaction.txn_date
+    ).filter(
         Transaction.user_id == user_id,
         Transaction.merchant_id.is_(None),
     ).all()
-    description_by_id = dict(rows)
+    txn_by_id = {r.id: r for r in rows}
+    descriptions = [(r.id, r.description) for r in rows]
 
-    clusters = merchant_matching_service.cluster_unmapped_descriptions(list(rows))
+    clusters = merchant_matching_service.cluster_unmapped_descriptions(descriptions)
     result = []
     for txn_ids in clusters:
-        sample_description = description_by_id[txn_ids[0]]
+        cluster_rows = [txn_by_id[tid] for tid in txn_ids]
+        amounts = [float(r.amount) for r in cluster_rows]
+        dates = [r.txn_date for r in cluster_rows if r.txn_date]
+        # Distinct raw strings, in the order they're first seen, capped at 3
+        # -- enough to spot embedded entity names without flooding the card.
+        seen: list[str] = []
+        for r in cluster_rows:
+            if r.description not in seen:
+                seen.append(r.description)
+            if len(seen) == 3:
+                break
         result.append({
-            "handle": merchant_matching_service.extract_vpa_handle(sample_description),
-            "sample_description": sample_description,
+            "handle": merchant_matching_service.extract_vpa_handle(cluster_rows[0].description),
+            "sample_description": cluster_rows[0].description,
+            "sample_descriptions": seen,
             "transaction_ids": txn_ids,
             "count": len(txn_ids),
+            "total_amount": sum(amounts),
+            "min_amount": min(amounts),
+            "max_amount": max(amounts),
+            "first_seen": min(dates) if dates else None,
+            "last_seen": max(dates) if dates else None,
         })
     return result
 

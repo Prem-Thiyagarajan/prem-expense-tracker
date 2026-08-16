@@ -3,7 +3,7 @@
 import axios from 'axios';
 import toast from 'react-hot-toast'; // Import toast for the interceptor
 import type {
-  DashboardData, BudgetPageData, Category, Transaction, Tag, Account, AnalyticsData, User, Alert,
+  DashboardData, BudgetPageData, Category, Transaction, Tag, TagExcludedPage, Account, AnalyticsData, User, Alert,
   Merchant, MerchantCluster, RescanResult, Goal, Subscription, AssistantChatMessage, AssistantHealth,
   AssistantStreamEvent,
 } from '../types';
@@ -121,8 +121,8 @@ export const createCategory = (data: { name: string; is_income: boolean; icon_na
 export const updateCategory = (id: number, data: Partial<Category>): Promise<Category> => apiClient.put<Category>(`/categories/${id}`, data).then(res => res.data);
 export const deleteCategory = (id: number): Promise<void> => apiClient.delete(`/categories/${id}`).then(res => res.data);
 export const getTags = (): Promise<Tag[]> => apiClient.get<Tag[]>('/tags').then(res => res.data);
-export const createTag = (data: { name: string }): Promise<Tag> => apiClient.post<Tag>('/tags', data).then(res => res.data);
-export const updateTag = (id: number, data: { name: string }): Promise<Tag> => apiClient.put<Tag>(`/tags/${id}`, data).then(res => res.data);
+export const createTag = (data: { name: string; excluded_pages: TagExcludedPage[] }): Promise<Tag> => apiClient.post<Tag>('/tags', data).then(res => res.data);
+export const updateTag = (id: number, data: { name: string; excluded_pages: TagExcludedPage[] }): Promise<Tag> => apiClient.put<Tag>(`/tags/${id}`, data).then(res => res.data);
 export const deleteTag = (id: number): Promise<void> => apiClient.delete(`/tags/${id}`).then(res => res.data);
 export const getAccounts = (): Promise<Account[]> => apiClient.get<Account[]>('/accounts').then(res => res.data);
 export const createAccount = (accountData: { name: string; type: string; provider: string; }): Promise<Account> => {
@@ -162,6 +162,10 @@ export const getUnreadAlerts = (): Promise<Alert[]> => {
 
 export const acknowledgeAlert = (alertId: number): Promise<Alert> => {
   return apiClient.put<Alert>(`/alerts/${alertId}/acknowledge`).then(res => res.data);
+};
+
+export const acknowledgeAllAlerts = (): Promise<{ acknowledged: number }> => {
+  return apiClient.put<{ acknowledged: number }>('/alerts/read-all').then(res => res.data);
 };
 
 // 8. Merchants

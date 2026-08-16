@@ -32,9 +32,7 @@ const CategorySettingsCard: React.FC<CategorySettingsCardProps> = ({ categories 
                 key={category.id}
                 className="flex items-center gap-2.5 border-1.5 border-line rounded-chip px-3 py-2.5"
               >
-                <div className="w-8 h-8 rounded-full border-1.5 border-line flex items-center justify-center shrink-0">
-                  {getCategoryIcon(category.name, category.icon_name)}
-                </div>
+                {getCategoryIcon(category.name, category.icon_name, 38)}
                 <span className="flex-1 font-heading font-bold text-[13px] text-ink truncate">{category.name}</span>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => onEdit(category)} className="p-1 text-muted hover:text-link">

@@ -8,8 +8,7 @@ import pandas as pd
 
 from app.models.transaction import Transaction
 from app.models.category import Category
-from app.models.tag import Tag
-from app.models.transaction_tag import TransactionTag
+from app.crud.tag_crud import get_excluded_transaction_ids
 
 #! CHANGE: Function now requires user_id
 def get_dashboard_data(db: Session, month: str, user_id: int):
@@ -20,15 +19,14 @@ def get_dashboard_data(db: Session, month: str, user_id: int):
 
     today = date.today()
     next_month_start = month_start + relativedelta(months=1)
-    
+
     days_in_month = calendar.monthrange(month_start.year, month_start.month)[1]
     day_number_for_avg = days_in_month if month_start.replace(day=1) != today.replace(day=1) else today.day
 
     # --- CORE EXCLUSION LOGIC (scoped to user) ---
-    exclude_tag = db.query(Tag).filter(Tag.name == "Exclude from Analytics", Tag.user_id == user_id).first()
-    transactions_to_exclude = []
-    if exclude_tag:
-        transactions_to_exclude = [t.transaction_id for t in db.query(TransactionTag.transaction_id).filter(TransactionTag.tag_id == exclude_tag.id).all()]
+    # Which transactions to hide is now per-tag configurable (Settings >
+    # Tags), not hardcoded to a tag literally named "Exclude from Analytics".
+    transactions_to_exclude = get_excluded_transaction_ids(db, user_id, "dashboard")
 
     # --- BASE QUERY (scoped to user) ---
     base_query_this_month = db.query(Transaction).filter(
