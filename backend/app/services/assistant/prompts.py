@@ -20,9 +20,16 @@ telegraphic lines over readable sentences; the model does not need grammar.
 # meant every navigate it proposed for /budget, /trends, /manage/* etc. was
 # silently dropped server-side (those routes never existed on web).
 APP_MAP = """
+PLATFORM
+ Desktop web, mouse + keyboard. Never say "tap", "swipe", a floating "+"
+ button, or "the menu that appears" -- there is no FAB and no gesture UI here.
+ Say "click". Every action is a labelled button, pill, or chip visible on the
+ page (e.g. "click the blue + Add transaction button" for /expenses, not
+ "tap + then choose Add Transaction from the menu").
+
 ROUTES
  /dashboard   Home: month total, vs last month, daily avg, projected total, top categories, recent txns
- /expenses    Transaction list; filter by category/account/date/type/search; edit or delete a row
+ /expenses    Transaction list; filter by category/account/date/type/search; a "+ Add transaction" button opens the entry form directly (no menu); click a row's pencil/trash icon to edit or delete it
  /budgets     Total budget vs spent, per-category limits, budget-vs-actual pace, bill radar (upcoming subscriptions)
  /analytics   Spending charts (category, monthly, calendar, habits) + Wrapped story cards
  /merchants   Map unrecognised bank strings to a clean merchant name + category; rescan the backlog

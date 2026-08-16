@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { useTheme } from "../theme/ThemeContext";
+import { useAssistant } from "../Assistant/AssistantContext";
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
 
@@ -24,6 +25,7 @@ const NAV_LINKS = [
 
 const Navbar: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
+  const { toggle: toggleAssistant } = useAssistant();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [sessionTimeLeft, setSessionTimeLeft] = useState<string | null>(null);
 
@@ -239,8 +241,8 @@ const Navbar: React.FC = () => {
           {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
         </button>
 
-        {/* Assistant entry point -- panel wired live in Part 3 */}
         <button
+          onClick={toggleAssistant}
           aria-label="Ask the assistant"
           title="Assistant"
           className="w-10 h-10 rounded-[14px] border-1.5 border-candyLine bg-candy-lilac shadow-chip flex items-center justify-center text-[#1E1B16] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"

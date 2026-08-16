@@ -10,6 +10,8 @@ import ProtectedRoute from './auth/ProtectedRoute';
 import { ThemeProvider } from './theme/ThemeContext';
 import { MonthProvider } from './components/MonthContext';
 import MonthPickerModal from './components/MonthPickerModal';
+import { AssistantProvider } from './Assistant/AssistantContext';
+import AssistantPanel from './Assistant/AssistantPanel';
 
 // ✅ 2. Change all page-level components to be lazy-loaded
 // This tells React to fetch the code for these pages only when they are needed.
@@ -40,6 +42,7 @@ const MainLayout: React.FC = () => {
         <Outlet />
       </main>
       <MonthPickerModal />
+      <AssistantPanel />
     </div>
   );
 };
@@ -48,43 +51,45 @@ function App() {
   return (
     <ThemeProvider>
       <MonthProvider>
-        <Toaster
-          position="top-center"
-          toastOptions={{
-            duration: 3500,
-            style: {
-              background: 'var(--color-ink)',
-              color: 'var(--color-bg)',
-              borderRadius: '999px',
-              fontFamily: 'Archivo, sans-serif',
-              fontWeight: 600,
-            },
-          }}
-        />
-        <BrowserRouter>
-          {/* ✅ 3. Wrap your entire <Routes> component in a <Suspense> boundary. */}
-          {/* This tells React what to render (the PageLoader) while it's waiting for a lazy component to load. */}
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+        <AssistantProvider>
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              duration: 3500,
+              style: {
+                background: 'var(--color-ink)',
+                color: 'var(--color-bg)',
+                borderRadius: '999px',
+                fontFamily: 'Archivo, sans-serif',
+                fontWeight: 600,
+              },
+            }}
+          />
+          <BrowserRouter>
+            {/* ✅ 3. Wrap your entire <Routes> component in a <Suspense> boundary. */}
+            {/* This tells React what to render (the PageLoader) while it's waiting for a lazy component to load. */}
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
 
-              <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-                <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="budgets" element={<Budgets />} />
-                <Route path="expenses" element={<Expenses />} />
-                <Route path="analytics" element={<Analytics />} />
-                <Route path="merchants" element={<Merchants />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="profile" element={<ProfilePage />} />
-              </Route>
+                <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+                  <Route index element={<Navigate to="/dashboard" replace />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="budgets" element={<Budgets />} />
+                  <Route path="expenses" element={<Expenses />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="merchants" element={<Merchants />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                </Route>
 
-              {/* A fallback route to redirect any unknown paths to the dashboard */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
+                {/* A fallback route to redirect any unknown paths to the dashboard */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </AssistantProvider>
       </MonthProvider>
     </ThemeProvider>
   );
