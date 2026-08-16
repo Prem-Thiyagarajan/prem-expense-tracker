@@ -2,23 +2,34 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Bell, UserCircle, Clock, CheckCircle, PlusCircle, X } from "lucide-react";
+import { Bell, Clock, CheckCircle, PlusCircle, X, Sun, Moon, Sparkles, LogOut, User } from "lucide-react";
 import logo from "../assets/logo.png";
 import { logout, getUnreadAlerts, acknowledgeAlert } from "../api/apiClient";
 import type { Alert } from "../types";
 import dayjs from "dayjs";
 import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { useTheme } from "../theme/ThemeContext";
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
 
+const NAV_LINKS = [
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/analytics", label: "Analytics" },
+  { to: "/expenses", label: "Expenses" },
+  { to: "/budgets", label: "Budgets" },
+  { to: "/merchants", label: "Merchants" },
+  { to: "/settings", label: "Settings" },
+];
+
 const Navbar: React.FC = () => {
+  const { theme, toggleTheme } = useTheme();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [sessionTimeLeft, setSessionTimeLeft] = useState<string | null>(null);
-  
+
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  
+
   const menuRef = useRef<HTMLDivElement>(null);
   const alertsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -29,11 +40,6 @@ const Navbar: React.FC = () => {
     logout();
     setIsUserMenuOpen(false);
   };
-
-  const getActiveLinkStyle = ({ isActive }: { isActive: boolean }) => ({
-    color: isActive ? "#22c55e" : "#d1d5db",
-    fontWeight: isActive ? "bold" : "normal",
-  });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -72,7 +78,7 @@ const Navbar: React.FC = () => {
         setSessionTimeLeft(null);
       }
     };
-    
+
     updateTimer();
     const intervalId = setInterval(updateTimer, 1000);
     return () => clearInterval(intervalId);
@@ -89,7 +95,7 @@ const Navbar: React.FC = () => {
     };
 
     fetchAlerts();
-    const intervalId = setInterval(fetchAlerts, 60000); 
+    const intervalId = setInterval(fetchAlerts, 60000);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -109,24 +115,21 @@ const Navbar: React.FC = () => {
       handleAcknowledgeAlert(alert.id);
     }
   };
-  
+
   const renderAlertContent = (alert: Alert) => {
     if (alert.type === 'new_category' && alert.context?.category_name) {
       return (
-        <div key={alert.id} className="p-3 border-b hover:bg-gray-50 flex items-start gap-3">
-          <div className="w-1.5 h-1.5 mt-1.5 bg-purple-500 rounded-full flex-shrink-0"></div>
+        <div key={alert.id} className="p-3 border-b border-hair hover:bg-hair/60 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full border-1.5 border-line bg-candy-lilac flex items-center justify-center shrink-0 mt-0.5" />
           <div className="flex-grow">
-            <p className="text-sm">New category found: <strong>{alert.context.category_name}</strong></p>
-            <p className="text-xs text-gray-400 mt-1">{dayjs(alert.triggered_at).fromNow()}</p>
+            <p className="text-sm font-body">New category found: <strong className="font-heading">{alert.context.category_name}</strong></p>
+            <p className="text-xs font-body text-faint mt-1">{dayjs(alert.triggered_at).fromNow()}</p>
           </div>
-          {/* ✅ --- THIS IS THE FIX --- */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {/* "Ignore" button */}
-            <button onClick={() => handleAcknowledgeAlert(alert.id)} title="Ignore" className="p-1 text-gray-400 hover:text-red-600">
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => handleAcknowledgeAlert(alert.id)} title="Dismiss" className="p-1 text-muted hover:text-semantic-red">
               <X size={18} />
             </button>
-            {/* "Add" button */}
-            <button onClick={() => handleNewCategoryAlertClick(alert)} title="Add this category" className="p-1 text-gray-400 hover:text-green-600">
+            <button onClick={() => handleNewCategoryAlertClick(alert)} title="Add this category" className="p-1 text-muted hover:text-semantic-green">
               <PlusCircle size={18} />
             </button>
           </div>
@@ -136,79 +139,133 @@ const Navbar: React.FC = () => {
 
     if (alert.type === 'budget' && alert.goal) {
       return (
-        <div key={alert.id} className="p-3 border-b hover:bg-gray-50 flex items-start gap-3">
-          <div className="w-1.5 h-1.5 mt-1.5 bg-blue-500 rounded-full flex-shrink-0"></div>
+        <div key={alert.id} className="p-3 border-b border-hair hover:bg-hair/60 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full border-1.5 border-line bg-candy-coral flex items-center justify-center shrink-0 mt-0.5" />
           <div className="flex-grow">
-            <p className="text-sm">
-              You've used {alert.threshold_percentage}% of your <strong>{alert.goal?.category?.name || 'a'}</strong> budget for {dayjs(alert.goal?.month + "-01").format("MMMM")}.
+            <p className="text-sm font-body">
+              You've used {alert.threshold_percentage}% of your <strong className="font-heading">{alert.goal?.category?.name || 'a'}</strong> budget for {dayjs(alert.goal?.month + "-01").format("MMMM")}.
             </p>
-            <p className="text-xs text-gray-400 mt-1">{dayjs(alert.triggered_at).fromNow()}</p>
+            <p className="text-xs font-body text-faint mt-1">{dayjs(alert.triggered_at).fromNow()}</p>
           </div>
-          <button onClick={() => handleAcknowledgeAlert(alert.id)} title="Mark as read" className="p-1 text-gray-400 hover:text-green-600 flex-shrink-0">
+          <button onClick={() => handleAcknowledgeAlert(alert.id)} title="Mark as read" className="p-1 text-muted hover:text-semantic-green shrink-0">
             <CheckCircle size={18} />
           </button>
         </div>
       );
     }
-    
+
+    // TODO(Part 2): render alert.type === 'new_merchant' the same visual way,
+    // with accept -> apply the suggested merchant/category, dismiss -> acknowledge.
+
     return null;
   };
 
   return (
-    <header className="bg-gray-900 h-16 px-6 flex items-center justify-between sticky top-0 z-50">
-      <div className="flex items-center space-x-3">
-        <img src={logo} alt="ExpenseTracker Logo" className="h-8 w-8" />
-        <span className="text-white text-lg font-semibold">ExpenseTracker</span>
+    <header className="h-[70px] px-6 flex items-center justify-between sticky top-0 z-40 bg-nav border-b-2 border-line">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-[13px] border-2 border-line shadow-card bg-[#151806] flex items-center justify-center shrink-0 overflow-hidden">
+          <img src={logo} alt="ExpenseTracker" className="h-6 w-6 object-contain" />
+        </div>
+        <div className="hidden sm:flex flex-col leading-none">
+          <span className="font-heading font-extrabold text-[17px] text-ink">ExpenseTracker</span>
+          <span className="font-body font-semibold text-[8px] uppercase tracking-[0.2em] text-muted mt-1">Spend smarter</span>
+        </div>
       </div>
-      
-      <nav className="hidden md:flex space-x-6">
-        <NavLink to="/dashboard" style={getActiveLinkStyle} className="hover:text-white text-sm">Dashboard</NavLink>
-        <NavLink to="/analytics" style={getActiveLinkStyle} className="hover:text-white text-sm">Analytics</NavLink>
-        <NavLink to="/expenses" style={getActiveLinkStyle} className="hover:text-white text-sm">Expenses</NavLink>
-        <NavLink to="/budgets" style={getActiveLinkStyle} className="hover:text-white text-sm">Budgets</NavLink>
-        <NavLink to="/settings" style={getActiveLinkStyle} className="hover:text-white text-sm">Settings</NavLink>
+
+      <nav className="hidden md:flex items-center gap-1.5">
+        {NAV_LINKS.map(({ to, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              [
+                "px-3.5 py-2 rounded-full text-sm font-body font-semibold transition-all duration-chip",
+                isActive
+                  ? "bg-candy-yellow border-1.5 border-line shadow-chip text-[#1E1B16]"
+                  : "opacity-55 hover:opacity-100 text-ink",
+              ].join(" ")
+            }
+          >
+            {label}
+          </NavLink>
+        ))}
       </nav>
 
-      <div className="flex items-center space-x-4 text-white">
+      <div className="flex items-center gap-2.5">
         {sessionTimeLeft && (
-          <div className="flex items-center text-sm text-gray-400" title="Session time remaining">
-            <Clock size={16} className="mr-1.5" />
+          <div className="hidden lg:flex items-center text-xs font-mono text-muted gap-1" title="Session time remaining">
+            <Clock size={14} />
             <span>{sessionTimeLeft}</span>
           </div>
         )}
 
+        <button
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+          className="w-10 h-10 rounded-full border-1.5 border-line flex items-center justify-center hover:bg-hair transition-colors"
+        >
+          {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
+
+        {/* Assistant entry point -- panel wired live in Part 3 */}
+        <button
+          aria-label="Ask the assistant"
+          title="Assistant"
+          className="w-10 h-10 rounded-[14px] border-1.5 border-line bg-candy-lilac shadow-chip flex items-center justify-center text-[#1E1B16] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+        >
+          <Sparkles size={17} />
+        </button>
+
         <div className="relative" ref={alertsRef}>
-          <button onClick={() => setIsAlertsOpen(!isAlertsOpen)} className="relative hover:text-green-400 focus:outline-none">
-            <Bell className="w-5 h-5" />
+          <button
+            onClick={() => setIsAlertsOpen(!isAlertsOpen)}
+            aria-label="Notifications"
+            className="relative w-10 h-10 rounded-full border-1.5 border-line flex items-center justify-center hover:bg-hair transition-colors"
+          >
+            <Bell size={17} />
             {unreadCount > 0 && (
-              <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 px-0.5 items-center justify-center rounded-full border-1.5 border-line bg-candy-coral text-[10px] font-body font-bold text-[#1E1B16]">
                 {unreadCount}
               </span>
             )}
           </button>
           {isAlertsOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-white text-gray-800 rounded shadow-lg z-50 max-h-96 overflow-y-auto">
-              <div className="p-3 font-bold border-b">Notifications</div>
+            <div className="absolute right-0 mt-2 w-[378px] bg-card text-ink border-2 border-line rounded-cardLg shadow-overlay z-50 max-h-96 overflow-y-auto">
+              <div className="p-3.5 font-heading font-bold text-sm border-b-2 border-line flex items-center justify-between">
+                <span>Notifications</span>
+                {unreadCount > 0 && <span className="text-xs font-body text-muted">{unreadCount} unread</span>}
+              </div>
               {alerts.length > 0 ? (
                 alerts.map(alert => renderAlertContent(alert))
               ) : (
-                <p className="p-4 text-sm text-center text-gray-500">You're all caught up!</p>
+                <p className="p-6 text-sm font-body text-center text-muted">You're all caught up!</p>
               )}
+              <Link
+                to="/merchants"
+                onClick={() => setIsAlertsOpen(false)}
+                className="block p-3 text-center text-sm font-body font-semibold text-link hover:underline border-t-2 border-line"
+              >
+                View Merchants →
+              </Link>
             </div>
           )}
         </div>
 
         <div className="relative" ref={menuRef}>
-          <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className="hover:ring-2 ring-white transition duration-150 rounded-full p-1">
-            <UserCircle className="w-7 h-7 text-green-400" />
+          <button
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            aria-label="Account menu"
+            className="w-10 h-10 rounded-full border-1.5 border-line bg-candy-pink shadow-chip flex items-center justify-center text-[#1E1B16]"
+          >
+            <User size={17} />
           </button>
           {isUserMenuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded shadow-lg py-1 z-50">
-              <Link to="/profile" onClick={() => setIsUserMenuOpen(false)} className="block px-4 py-2 text-sm hover:bg-gray-100">
-                Your Profile
+            <div className="absolute right-0 mt-2 w-48 bg-card text-ink border-2 border-line rounded-card shadow-overlay py-1 z-50">
+              <Link to="/profile" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-body font-medium hover:bg-hair">
+                <User size={15} /> Your profile
               </Link>
-              <button onClick={handleLogout} className="w-full text-left block px-4 py-2 text-sm hover:bg-gray-100">
-                Sign out
+              <button onClick={handleLogout} className="w-full flex items-center gap-2 text-left px-4 py-2.5 text-sm font-body font-medium hover:bg-hair">
+                <LogOut size={15} /> Sign out
               </button>
             </div>
           )}

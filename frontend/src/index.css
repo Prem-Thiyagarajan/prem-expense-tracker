@@ -1,3 +1,68 @@
+/* Fonts are loaded via <link> in index.html (matches the prototype's <head>,
+   and lets the browser start the font fetch before this stylesheet parses). */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Design tokens — transcribed 1:1 from PFT-Mobile/src/theme/tokens.ts, the
+ * shared source of truth for both apps (see handoff/README.md §Design tokens).
+ * Light values live on :root; dark values override under [data-theme="dark"].
+ * Candy accents are NOT here — they're fixed hex in tailwind.config.js because
+ * they never change between themes.
+ */
+:root {
+  --color-bg: #FFF8ED;
+  --color-card: #FFFFFF;
+  --color-ink: #1E1B16;
+  --color-line: #1E1B16;
+  --color-shadow: #1E1B16;
+  --color-muted: #9B948A;
+  --color-faint: #B9B2A6;
+  --color-hair: #F3EDDF;
+  --color-link: #5C7CFA;
+  --color-nav: #FFF8ED;
+  --color-green: #0E9F6E;
+  --color-red: #E03131;
+  --scrim: rgba(30, 27, 22, 0.45);
+}
+
+[data-theme="dark"] {
+  --color-bg: #14110C;
+  --color-card: #221E16;
+  --color-ink: #F5EFE2;
+  --color-line: #EAE2CE;
+  --color-shadow: #000000;
+  --color-muted: #ABA28F;
+  --color-faint: #7E7666;
+  --color-hair: #383226;
+  --color-link: #A5B4FF;
+  --color-nav: #1B1712;
+  --color-green: #7CE3A8;
+  --color-red: #FF8787;
+  --scrim: rgba(0, 0, 0, 0.55);
+}
+
+html {
+  background: var(--color-bg);
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: Archivo, system-ui, sans-serif;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: Archivo, system-ui, sans-serif;
+}

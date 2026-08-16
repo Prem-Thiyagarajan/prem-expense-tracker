@@ -13,14 +13,14 @@ interface ConfirmModalProps {
 const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, onClose, onConfirm, title, message }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <div className="space-y-4">
-        <p>{message}</p>
-        <div className="flex justify-end space-x-2">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+      <div className="space-y-5">
+        <p className="font-body text-sm text-ink">{message}</p>
+        <div className="flex justify-end gap-2.5">
+          <button onClick={onClose} className="px-4 py-2 rounded-full border-1.5 border-line font-body font-semibold text-sm hover:bg-hair transition-colors">
             Cancel
           </button>
-          <button onClick={onConfirm} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
-            Confirm Delete
+          <button onClick={onConfirm} className="px-4 py-2 rounded-full border-2 border-line bg-candy-coral text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press">
+            Confirm delete
           </button>
         </div>
       </div>
