@@ -152,6 +152,7 @@ prem-expense-tracker/               ← Monorepo root
 ├── backend/                        ← Python FastAPI application
 │   ├── requirements.txt            ← All Python dependencies
 │   ├── .env                        ← Local secrets (NOT committed to git in production)
+│   ├── alembic/versions/           ← DB migrations, applied in order (0001, 0002, 0003...)
 │   └── app/
 │       ├── main.py                 ← FastAPI app entry point
 │       ├── api/                    ← Route handlers
@@ -176,6 +177,7 @@ prem-expense-tracker/               ← Monorepo root
         ├── Expenses/               ← Expenses page and sub-components
         ├── Budgets/                ← Budgets page and sub-components
         ├── Analytics/              ← Analytics page and sub-components
+        ├── Merchants/              ← Merchant mapping page
         ├── Settings/               ← Settings page and sub-components
         ├── Profile/                ← Profile page
         ├── types/                  ← TypeScript interfaces
@@ -503,6 +505,17 @@ Defines all routes, wrapped in `ThemeProvider` and `MonthProvider`. Every route 
 
 ---
 
+### `src/Merchants/Merchants.tsx` — Merchant Mapping
+
+Single file (no subcomponents folder, like Profile). Three things on one page:
+- **Bulk-suggestion banner**: one card per cluster from `GET /merchants/clusters` (transactions with no merchant at all yet, grouped by shared UPI handle) — raw description sample, an editable clean-name input pre-filled with a guess derived from the handle, a category picker, and "Apply to N": creates the merchant (`POST /merchants`) then links every transaction in the cluster to it (`PUT /transactions/{id}` per id).
+- **Search + list of existing merchants**: `GET /merchants?q=`, inline rename/recategorise (`PUT /merchants/{id}`) and delete (`DELETE /merchants/{id}`).
+- **"N unmapped" badge + "Rescan backlog" button**: `GET /merchants/unmapped-count` and `POST /merchants/rescan` — sweeps the existing backlog against merchants that already exist (exact handle auto-applies, fuzzy raises a `new_merchant` alert instead of showing up here).
+
+The Navbar's notification dropdown renders `new_merchant` alerts the same visual way as `new_category` ones; accept composes `PUT /transactions/{id}` + `PUT /alerts/{id}/acknowledge` (no dedicated "accept" endpoint).
+
+---
+
 ### `src/Settings/` — App Configuration
 
 | File | Purpose |
@@ -708,10 +721,12 @@ updated_at    DateTime       server default = now(), auto-updates
 Column                Type           Constraints
 ─────────────────────────────────────────────────
 id                    Integer        PK
-type                  String         "budget" or "new_category", default "budget"
+type                  String         "budget", "new_category", or "new_merchant"; default "budget"
 goal_id               Integer        FK → goals.id, CASCADE DELETE, nullable
 threshold_percentage  Numeric(5,2)   nullable (75.00, 90.00, 100.00)
-context               JSON           flexible data payload (e.g. category name for new_category alerts)
+context               JSON           flexible data payload -- category name for new_category; transaction id/
+                                     description snippet/suggested merchant+category/match reason/similarity
+                                     score for new_merchant (see merchant_matching_service.py)
 triggered_at          DateTime       nullable
 is_acknowledged       Boolean        default False
 user_id               Integer        FK → users.id, CASCADE DELETE, indexed
@@ -794,12 +809,17 @@ All endpoints are prefixed with `/api/v1`. All endpoints except auth require `Au
 
 ### Merchants
 
-| Method | Path | Body | Response |
+| Method | Path | Body / Params | Response |
 |---|---|---|---|
-| GET | `/merchants` | — | `MerchantOut[]` |
+| GET | `/merchants` | `q?` (case-insensitive name search) | `MerchantOut[]` |
 | POST | `/merchants` | `{ name, category_id? }` | `MerchantOut` |
-| PUT | `/merchants/{id}` | `MerchantUpdate` | `MerchantOut` |
+| PUT | `/merchants/{id}` | `MerchantUpdate` | `MerchantOut` — renaming/recategorising never touches transactions already linked to the merchant, only affects future matches |
 | DELETE | `/merchants/{id}` | — | `{ message }` |
+| GET | `/merchants/unmapped-count` | — | `{ count }` — transactions with `merchant_id IS NULL`; backs the notification-bell badge and the Merchants page's "N unmapped" indicator |
+| GET | `/merchants/clusters` | — | `MerchantClusterOut[]` — groups *currently-unmapped* transactions (no merchant at all) by shared UPI handle, for the cold-start bulk-naming banner |
+| POST | `/merchants/rescan` | — | `{ auto_applied, suggested }` — sweeps unmapped transactions against existing merchants using the same algorithm as upload time (exact UPI-handle match auto-applies; fuzzy match raises a `new_merchant` alert instead) |
+
+Matching (`app/services/merchant_matching_service.py`) is 100% local -- no LLM calls anywhere in this feature, since raw transaction descriptions are financial PII and a rescan sweeps the whole backlog unreviewed. Exact `name@bank` VPA handle match is high-confidence and auto-applies; otherwise RapidFuzz similarity against the merchant's known description strings (threshold calibrated against real production data) is medium-confidence and only raises a suggestion. The old hardcoded `MERCHANT_CATEGORY_RULES` dict in `upload_service.py` was retired via `alembic/versions/0003_seed_merchants_from_rules.py`, which both seeded real `Merchant` rows and backfilled matching pre-existing unmapped transactions so the new fingerprint-based matcher starts with real history to compare against.
 
 ### Goals (Monthly Budget Limits)
 
@@ -931,10 +951,16 @@ Step 2 — Fuzzy match against existing categories
   → Match found: use that category
   → No match: continue
 
-Step 3 — Merchant rules
-  If transaction has a known merchant, use merchant's default category
-  → Match found: use that category
-  → No match: continue
+Step 3 — Merchant matching (local only, no LLM -- see app/services/merchant_matching_service.py)
+  Exact UPI-handle match against an existing merchant's known handles
+  → Match: auto-apply that merchant + its category (high confidence)
+  → No handle match: fuzzy similarity against the merchant's known
+    description strings (RapidFuzz, threshold calibrated against real
+    production data)
+    → Above threshold: raise a 'new_merchant' suggestion alert instead of
+      auto-applying (medium confidence -- needs a human accept/dismiss);
+      category stays unset until then
+    → No match: continue
 
 Step 4 — Default
   Assign "Miscellaneous" category
