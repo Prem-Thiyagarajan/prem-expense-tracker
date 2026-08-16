@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import { Bell, Clock, CheckCircle, PlusCircle, X, Sun, Moon, Sparkles, LogOut, User, Check } from "lucide-react";
-import logo from "../assets/logo.png";
+import logo from "../assets/glyph-lime.svg";
 import { logout, getUnreadAlerts, acknowledgeAlert, updateTransaction } from "../api/apiClient";
 import type { Alert } from "../types";
 import dayjs from "dayjs";
