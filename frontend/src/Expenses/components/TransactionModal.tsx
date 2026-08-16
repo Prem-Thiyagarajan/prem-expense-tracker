@@ -203,7 +203,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
                     key={acc.id}
                     type="button"
                     onClick={() => setAccountId(acc.id)}
-                    className={[chipBtn, active ? "bg-candy-blue text-white shadow-chip" : "bg-card text-ink"].join(" ")}
+                    className={[chipBtn, active ? "bg-candy-blue text-[#1E1B16] shadow-chip" : "bg-card text-ink"].join(" ")}
                   >
                     {acc.name}
                   </button>
@@ -308,8 +308,8 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="w-full mt-5 border-2 border-line rounded-card shadow-card py-3.5 font-heading font-extrabold text-sm disabled:opacity-60 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
-          style={{ background: isCredit ? '#C7F0DB' : '#5C7CFA', color: isCredit ? '#1E1B16' : '#fff' }}
+          className="w-full mt-5 border-2 border-candyLine rounded-card shadow-card py-3.5 font-heading font-extrabold text-sm disabled:opacity-60 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+          style={{ background: isCredit ? '#C7F0DB' : '#5C7CFA', color: '#1E1B16' }}
         >
           {isSaving ? 'Saving…' : isCredit ? 'Save income' : 'Save transaction'}
         </button>

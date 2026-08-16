@@ -237,7 +237,7 @@ const ProfilePage: React.FC = () => {
                                 <select
                                     value={sqQuestion}
                                     onChange={e => setSqQuestion(e.target.value)}
-                                    className={`${inputClass} cursor-pointer`}
+                                    className={`${inputClass} select-arrow cursor-pointer`}
                                 >
                                     {SECURITY_QUESTIONS.map(q => <option key={q} value={q}>{q}</option>)}
                                 </select>

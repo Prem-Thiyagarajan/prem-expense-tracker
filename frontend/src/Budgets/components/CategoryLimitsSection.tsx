@@ -213,7 +213,7 @@ const CategoryLimitsSection: React.FC<Props> = ({ goals, planItems, categories, 
               <select
                 value={categoryId}
                 onChange={(e) => setCategoryId(Number(e.target.value))}
-                className="bg-bg border-1.5 border-line rounded-[12px] px-3.5 py-2.5 font-body font-semibold text-sm text-ink outline-none"
+                className="select-arrow bg-bg border-1.5 border-line rounded-[12px] px-3.5 py-2.5 font-body font-semibold text-sm text-ink outline-none"
               >
                 {availableCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -232,7 +232,7 @@ const CategoryLimitsSection: React.FC<Props> = ({ goals, planItems, categories, 
             <button
               onClick={handleCreate}
               disabled={isSaving}
-              className="px-5 py-2.5 rounded-chip border-2 border-candyLine bg-candy-blue text-white font-heading font-extrabold text-[13px] shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50"
+              className="px-5 py-2.5 rounded-chip border-2 border-candyLine bg-candy-blue text-[#1E1B16] font-heading font-extrabold text-[13px] shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50"
             >
               {isSaving ? 'Saving…' : 'Save goal'}
             </button>

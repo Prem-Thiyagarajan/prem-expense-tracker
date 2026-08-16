@@ -31,7 +31,7 @@ const SwatchLegend = (props: any) => {
       {payload.map((entry: any, index: number) => (
         <li key={`item-${index}`} className="flex items-center gap-1.5">
           <span
-            className="w-[13px] h-[13px] rounded-[4px] border border-line shrink-0"
+            className="w-[13px] h-[13px] rounded-[4px] border border-candyLine shrink-0"
             style={{ background: entry.color }}
           />
           <span>{entry.value}</span>

@@ -99,7 +99,7 @@ const AnalyticsHeader: React.FC<AnalyticsHeaderProps> = ({
             <select
               value={timePeriod}
               onChange={e => setTimePeriod(e.target.value)}
-              className="bg-card border border-line rounded-full shadow-chip px-4 py-2 font-heading font-bold text-xs text-ink outline-none cursor-pointer"
+              className="select-arrow bg-card border border-line rounded-full shadow-chip px-4 py-2 font-heading font-bold text-xs text-ink outline-none cursor-pointer"
             >
               <option value="3m">Last 3 Months</option>
               <option value="6m">Last 6 Months</option>

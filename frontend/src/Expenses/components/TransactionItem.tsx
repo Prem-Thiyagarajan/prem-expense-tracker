@@ -32,21 +32,28 @@ const getCategoryColor = (name?: string | null): string => (name && CATEGORY_COL
 // react-select v5 `unstyled` + `classNames` — themes the inline tag picker to
 // the chip/pill vocabulary without pulling in a CSS override file.
 const tagSelectClassNames = {
-  control: () => 'min-h-[34px] !bg-bg border border-line rounded-full px-2 font-body cursor-pointer',
-  valueContainer: () => 'gap-1 py-0.5 flex-wrap',
-  placeholder: () => 'text-faint text-[10.5px] font-body',
-  multiValue: () => '!bg-candy-lilac border border-candyLine rounded-full pl-2 pr-0.5 py-0 my-0.5 items-center gap-1',
+  // `flex items-start` on the control (rather than the default stretch/
+  // flex-start-by-row-count react-select falls back to under `unstyled`)
+  // keeps the dropdown chevron pinned to the top of the field regardless of
+  // how many rows the selected tags wrap onto -- previously it drifted
+  // wherever the tallest row happened to land. rounded-chip instead of
+  // rounded-full too: a full pill radius looks wrong once the field grows
+  // past one row.
+  control: () => 'min-h-[34px] !bg-bg border border-line rounded-chip px-2 py-1 font-body cursor-pointer flex items-start flex-wrap',
+  valueContainer: () => 'gap-1 py-0.5 flex-wrap flex-1',
+  placeholder: () => 'text-faint text-[10.5px] font-body self-center',
+  multiValue: () => '!bg-candy-lilac border border-candyLine rounded-full pl-2 pr-0.5 py-0 my-0.5 flex items-center gap-1',
   multiValueLabel: () => 'text-[10px] font-body font-bold text-[#1E1B16] py-0.5',
-  multiValueRemove: () => 'text-[#1E1B16] hover:text-semantic-red rounded-full px-1',
+  multiValueRemove: () => 'text-[#1E1B16] hover:text-semantic-red rounded-full px-1 flex items-center',
   menu: () => 'bg-card border-2 border-line rounded-card shadow-overlay mt-1.5 overflow-hidden z-20',
   menuList: () => 'py-1',
   option: ({ isFocused, isSelected }: { isFocused: boolean; isSelected: boolean }) =>
     `px-3 py-2 text-xs font-body cursor-pointer ${isSelected ? 'bg-candy-lilac text-[#1E1B16] font-semibold' : isFocused ? 'bg-hair' : 'bg-card'}`,
-  indicatorsContainer: () => 'gap-0.5 pr-1.5',
-  dropdownIndicator: () => 'text-muted',
-  clearIndicator: () => 'text-muted',
+  indicatorsContainer: () => 'flex items-center h-[26px] shrink-0 gap-0.5 pr-1',
+  dropdownIndicator: () => 'text-muted flex items-center',
+  clearIndicator: () => 'text-muted flex items-center',
   indicatorSeparator: () => 'hidden',
-  input: () => 'text-[11px] font-body',
+  input: () => 'text-[11px] font-body self-center',
 };
 
 const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, categories, allTags, onDelete, onEdit, onUpdate }) => {
@@ -144,7 +151,7 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, categori
         <select
             value={selectedCategoryId ?? ''}
             onChange={(e) => setSelectedCategoryId(Number(e.target.value) || null)}
-            className="shrink-0 border border-line rounded-full px-3 py-1.5 font-heading font-bold text-[11.5px] text-[#1E1B16] outline-none cursor-pointer"
+            className="select-arrow-candy shrink-0 border border-candyLine rounded-full px-3 py-1.5 font-heading font-bold text-[11.5px] text-[#1E1B16] outline-none cursor-pointer"
             style={{ background: catColor }}
         >
             <option value="">Uncategorized</option>

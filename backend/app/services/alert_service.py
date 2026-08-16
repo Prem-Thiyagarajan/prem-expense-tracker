@@ -2,6 +2,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models import Transaction, Goal, Alert, Category
+from app.models.tag import Tag
+from app.models.transaction_tag import TransactionTag
 from app.crud import alert_crud
 from datetime import date
 from decimal import Decimal
@@ -12,17 +14,29 @@ BUDGET_THRESHOLDS = [Decimal("100.0"), Decimal("90.0"), Decimal("75.0")]
 def get_total_spend_for_category_in_month(db: Session, user_id: int, category_id: int, month: str) -> Decimal:
     """Total debit spend for a category in a month, used to fire budget alerts.
 
-    The "Exclude from Analytics" tag is NOT applied: budget alerts are a budget
-    feature, and budgets count every rupee that actually left the account. This
-    must stay in step with budget_plan_service.get_budget_plan — if one applied
-    the tag and the other didn't, the Budget screen could read 100% used while
-    the 75/90/100% alerts never fired.
+    The "Exclude from Analytics" tag IS applied (matching budget_plan_service.
+    get_budget_plan, dashboard_service and analytics_service) -- this tag is
+    used almost exclusively for capital transfers, not real category spend,
+    and a single large transfer used to be able to fire a spurious 100%-over
+    alert on an otherwise on-track budget. This must stay in step with
+    budget_plan_service.get_budget_plan — if one applied the tag and the other
+    didn't, the Budget screen could read 100% used while the 75/90/100% alerts
+    never fired, or vice versa.
     """
+    exclude_tag = db.query(Tag).filter(Tag.name == "Exclude from Analytics", Tag.user_id == user_id).first()
+    transactions_to_exclude = []
+    if exclude_tag:
+        transactions_to_exclude = [
+            t.transaction_id for t in db.query(TransactionTag.transaction_id)
+            .filter(TransactionTag.tag_id == exclude_tag.id).all()
+        ]
+
     total_spend = db.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == user_id,
         Transaction.category_id == category_id,
         Transaction.type == 'debit',
-        func.to_char(Transaction.txn_date, 'YYYY-MM') == month
+        func.to_char(Transaction.txn_date, 'YYYY-MM') == month,
+        Transaction.id.notin_(transactions_to_exclude)
     ).scalar()
 
     return Decimal(total_spend or 0)
