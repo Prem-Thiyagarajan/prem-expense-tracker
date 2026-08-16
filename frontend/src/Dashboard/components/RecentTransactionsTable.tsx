@@ -50,9 +50,7 @@ const RecentTransactionsTable: React.FC<RecentTransactionsTableProps> = ({ trans
             return (
               <li key={index} className="flex justify-between items-center py-3">
                 <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-full border-1.5 border-line flex items-center justify-center shrink-0">
-                    {getCategoryIcon(category?.name, category?.icon_name)}
-                  </div>
+                  {getCategoryIcon(category?.name, category?.icon_name, 38)}
 
                   <div>
                     <p className="font-heading font-semibold text-sm">{tx.description}</p>

@@ -121,31 +121,42 @@ const BY_KEYWORD: [string, string][] = [
 // candy fill now, so the border is always the fixed (non-theme-swapping)
 // candyLine ink -- a theme-aware border-line would nearly disappear against a
 // candy fill in dark mode (see tailwind.config.js's candyLine token comment).
-const renderIcon = (iconKey: string): React.ReactNode => {
+//
+// This div IS the complete badge -- callers must render it directly, never
+// wrap it in another sized/bordered container. PFT-Mobile's CategoryBadge
+// (CONVENTIONS §1) uses 38px for list rows and 32px for grids; match that
+// here via `size` rather than hardcoding one size, so list rows (Expenses,
+// Dashboard's recent-transactions) end up the same visual weight as mobile
+// instead of getting circle-cropped inside an extra wrapper div (the old bug
+// -- see TransactionItem.tsx/RecentTransactionsTable.tsx history).
+const renderIcon = (iconKey: string, size: 32 | 38 = 32): React.ReactNode => {
     const iconData = iconRegistry[iconKey] || iconRegistry['default'];
-    const iconProps = { size: 18, className: 'text-[#1E1B16]' };
+    const iconProps = { size: size === 38 ? 20 : 18, className: 'text-[#1E1B16]' };
     const iconComponent = React.cloneElement(iconData.component, iconProps);
+    const boxClass = size === 38 ? 'w-[38px] h-[38px]' : 'w-8 h-8';
     return (
-        <div className={`w-8 h-8 rounded-chip border-1.5 border-candyLine flex items-center justify-center shrink-0 ${iconData.color}`}>
+        <div className={`${boxClass} rounded-chip border-1.5 border-candyLine flex items-center justify-center shrink-0 ${iconData.color}`}>
             {iconComponent}
         </div>
     );
 };
 
 // Resolves in three steps, matching categoryVisual.ts: exact icon_name ->
-// keyword match on the category name -> neutral fallback.
-export const getCategoryIcon = (categoryName?: string | null, iconName?: string | null): React.ReactNode => {
+// keyword match on the category name -> neutral fallback. `size` mirrors
+// PFT-Mobile's CategoryBadge: pass 38 for list rows, leave the 32 default
+// for grids/inline contexts.
+export const getCategoryIcon = (categoryName?: string | null, iconName?: string | null, size: 32 | 38 = 32): React.ReactNode => {
     const icon = iconName?.trim().toLowerCase();
-    if (icon && iconRegistry[icon]) return renderIcon(icon);
+    if (icon && iconRegistry[icon]) return renderIcon(icon, size);
 
     const lowerName = categoryName?.trim().toLowerCase();
     if (lowerName) {
         for (const [keyword, iconKey] of BY_KEYWORD) {
-            if (lowerName.includes(keyword)) return renderIcon(iconKey);
+            if (lowerName.includes(keyword)) return renderIcon(iconKey, size);
         }
     }
 
-    return renderIcon('default');
+    return renderIcon('default', size);
 };
 
 // Export ALL available icons, the parent component will handle filtering.
