@@ -98,7 +98,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
             <p className="font-body text-muted mb-4">No transactions found for the selected filters.</p>
             <button
               onClick={onAdd}
-              className="inline-flex items-center gap-1.5 bg-candy-blue text-white border-2 border-candyLine rounded-chip shadow-card px-4 py-2.5 font-heading font-extrabold text-[13px] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+              className="inline-flex items-center gap-1.5 bg-candy-blue text-[#1E1B16] border-2 border-candyLine rounded-chip shadow-card px-4 py-2.5 font-heading font-extrabold text-[13px] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
             >
               <Plus size={16} /> Add a transaction
             </button>

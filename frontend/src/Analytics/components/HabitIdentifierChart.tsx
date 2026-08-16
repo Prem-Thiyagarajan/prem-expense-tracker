@@ -61,7 +61,7 @@ const CategoryLegend = ({ data }: { data: HabitIdentifierPoint[] }) => {
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs font-body font-semibold mt-3">
       {uniqueCategories.map((category) => (
         <div key={category} className="flex items-center gap-1.5">
-          <span className="w-[13px] h-[13px] rounded-[4px] border border-line shrink-0" style={{ background: CATEGORY_COLORS[category] || CATEGORY_COLORS.default }} />
+          <span className="w-[13px] h-[13px] rounded-[4px] border border-candyLine shrink-0" style={{ background: CATEGORY_COLORS[category] || CATEGORY_COLORS.default }} />
           <span>{category}</span>
         </div>
       ))}
@@ -72,10 +72,10 @@ const CategoryLegend = ({ data }: { data: HabitIdentifierPoint[] }) => {
 const QuadrantLegend = () => (
   <div className="w-full border-t-2 border-line mt-3 pt-3">
     <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 font-body font-semibold text-[10px] uppercase tracking-[0.08em] text-muted">
-      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] border border-line shrink-0" style={{ background: QUADRANTS.lowLow }} />Low Cost / Low Freq</div>
-      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] border border-line shrink-0" style={{ background: QUADRANTS.highLow }} />High Cost / Low Freq</div>
-      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] border border-line shrink-0" style={{ background: QUADRANTS.lowHigh }} />Habits</div>
-      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] border border-line shrink-0" style={{ background: QUADRANTS.highHigh }} />Problem Zone</div>
+      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] border border-candyLine shrink-0" style={{ background: QUADRANTS.lowLow }} />Low Cost / Low Freq</div>
+      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] border border-candyLine shrink-0" style={{ background: QUADRANTS.highLow }} />High Cost / Low Freq</div>
+      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] border border-candyLine shrink-0" style={{ background: QUADRANTS.lowHigh }} />Habits</div>
+      <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-[4px] border border-candyLine shrink-0" style={{ background: QUADRANTS.highHigh }} />Problem Zone</div>
     </div>
   </div>
 );

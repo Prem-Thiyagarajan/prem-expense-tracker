@@ -226,7 +226,7 @@ const AssistantPanel: React.FC = () => {
                   className={[
                     'px-4 py-2.5 font-body text-sm whitespace-pre-wrap break-words',
                     m.role === 'user'
-                      ? 'bg-candy-blue text-white rounded-2xl rounded-br-[5px]'
+                      ? 'bg-candy-blue text-[#1E1B16] rounded-2xl rounded-br-[5px]'
                       : m.isError
                       ? 'bg-candy-coral/20 border border-candyLine rounded-2xl rounded-bl-[5px]'
                       : 'bg-card border border-line rounded-2xl rounded-bl-[5px]',
@@ -295,7 +295,7 @@ const AssistantPanel: React.FC = () => {
             onClick={() => send(input)}
             disabled={!health?.chat || isSending || !input.trim()}
             aria-label="Send"
-            className="w-10 h-10 rounded-full border-2 border-candyLine bg-candy-blue text-white flex items-center justify-center shrink-0 disabled:opacity-40 hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-press"
+            className="w-10 h-10 rounded-full border-2 border-candyLine bg-candy-blue text-[#1E1B16] flex items-center justify-center shrink-0 disabled:opacity-40 hover:translate-x-[1px] hover:translate-y-[1px] transition-all duration-press"
           >
             <Send size={15} />
           </button>

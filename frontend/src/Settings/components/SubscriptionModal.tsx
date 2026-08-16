@@ -131,7 +131,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
           </div>
           <div>
             <label className={labelClass}>Repeats</label>
-            <select value={interval} onChange={(e) => setInterval(e.target.value as SubscriptionInterval)} className={`${inputClass} font-semibold cursor-pointer`}>
+            <select value={interval} onChange={(e) => setInterval(e.target.value as SubscriptionInterval)} className={`${inputClass} select-arrow font-semibold cursor-pointer`}>
               {INTERVALS.map(i => <option key={i} value={i}>{INTERVAL_LABEL[i]}</option>)}
             </select>
           </div>

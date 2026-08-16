@@ -114,7 +114,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, onSave, ac
             id="type"
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="w-full bg-bg border-1.5 border-line rounded-[12px] px-3.5 py-2.5 font-body font-semibold text-sm text-ink outline-none focus:ring-2 focus:ring-link/40"
+            className="select-arrow w-full bg-bg border-1.5 border-line rounded-[12px] px-3.5 py-2.5 font-body font-semibold text-sm text-ink outline-none focus:ring-2 focus:ring-link/40"
           >
             <option>Bank</option>
             <option>Cash</option>

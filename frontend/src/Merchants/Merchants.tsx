@@ -99,7 +99,7 @@ const ClusterCard: React.FC<{
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(Number(e.target.value) || '')}
-          className="px-3 py-2 rounded-full border border-line font-body font-semibold text-xs outline-none cursor-pointer"
+          className="select-arrow-candy px-3 py-2 rounded-full border border-candyLine font-body font-semibold text-xs outline-none cursor-pointer"
           style={{ background: colorFor(categories, categoryId || null) }}
         >
           <option value="">Uncategorized</option>
@@ -166,7 +166,7 @@ const MerchantRow: React.FC<{
         value={categoryId}
         onChange={(e) => { setCategoryId(Number(e.target.value) || ''); }}
         onBlur={save}
-        className="px-3 py-1.5 rounded-full border border-line font-body font-semibold text-xs outline-none cursor-pointer"
+        className="select-arrow-candy px-3 py-1.5 rounded-full border border-candyLine font-body font-semibold text-xs outline-none cursor-pointer"
         style={{ background: colorFor(categories, categoryId || null) }}
       >
         <option value="">Uncategorized</option>

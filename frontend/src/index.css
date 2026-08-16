@@ -66,3 +66,44 @@ textarea,
 button {
   font-family: Archivo, system-ui, sans-serif;
 }
+
+/*
+ * Every native <select> in the app (category/account/tag pickers, filters,
+ * etc.) was rendering the browser's own default dropdown arrow -- wrong
+ * size, wrong color, not vertically centered against the pill/chip shapes
+ * around it. One shared chevron, applied via this class, replaces all of
+ * them consistently. Two theme variants (data URIs can't reference CSS custom
+ * properties) matching the ink token: #1E1B16 light, #F5EFE2 dark.
+ */
+select.select-arrow {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%231E1B16' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 15px;
+  padding-right: 2.25rem !important;
+}
+
+[data-theme="dark"] select.select-arrow {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23F5EFE2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+/*
+ * Same chevron, but for selects sitting on a candy fill (inline
+ * `style={{background: someCandyHex}}`) -- those always carry ink text/
+ * borders regardless of theme (a candy fill doesn't itself change between
+ * themes), so the chevron must stay the fixed light-ink colour in both
+ * themes too, unlike .select-arrow's theme-swapping one.
+ */
+select.select-arrow-candy {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%231E1B16' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 15px;
+  padding-right: 2.25rem !important;
+}

@@ -56,7 +56,7 @@ const ExpenseFilters: React.FC<ExpenseFiltersProps> = ({
         </div>
         <div>
           <label className={fieldLabel}>Account</label>
-          <select value={accountId} onChange={e => setAccountId(e.target.value)} className={`${fieldInput} cursor-pointer`}>
+          <select value={accountId} onChange={e => setAccountId(e.target.value)} className={`${fieldInput} select-arrow cursor-pointer`}>
             <option value="">All accounts</option>
             {allAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
           </select>
@@ -71,7 +71,7 @@ const ExpenseFilters: React.FC<ExpenseFiltersProps> = ({
                   key={chip.label}
                   type="button"
                   onClick={() => setType(chip.value)}
-                  className={[chipBtn, active ? "bg-candy-blue text-white shadow-chip" : "bg-hair text-ink"].join(" ")}
+                  className={[chipBtn, active ? "bg-candy-blue text-[#1E1B16] shadow-chip" : "bg-hair text-ink"].join(" ")}
                 >
                   {chip.label}
                 </button>
