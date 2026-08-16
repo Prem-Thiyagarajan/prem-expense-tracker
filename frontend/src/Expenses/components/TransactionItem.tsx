@@ -5,6 +5,7 @@ import Select from 'react-select';
 import { Pencil, Trash2 } from "lucide-react";
 import type { Transaction, Category, Tag } from '../../types';
 import { getCategoryIcon } from '../../utils/iconHelper';
+import Dropdown from '../../components/ui/Dropdown';
 import { updateTransaction } from '../../api/apiClient';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '../../utils/formatter';
@@ -124,9 +125,7 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, categori
   return (
     <div className="border border-line rounded-chip px-3.5 py-3 bg-card hover:shadow-chip transition-shadow duration-row">
       <div className="flex items-center gap-3.5 flex-wrap xl:flex-nowrap">
-        <div className="w-9 h-9 rounded-full border border-line flex items-center justify-center shrink-0 overflow-hidden">
-          {getCategoryIcon(category?.name, category?.icon_name)}
-        </div>
+        {getCategoryIcon(category?.name, category?.icon_name, 38)}
 
         <div className="min-w-0 flex-1 basis-40">
           <p className="font-heading font-bold text-sm truncate">{transaction.description}</p>
@@ -148,17 +147,18 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, categori
           />
         </div>
 
-        <select
-            value={selectedCategoryId ?? ''}
-            onChange={(e) => setSelectedCategoryId(Number(e.target.value) || null)}
-            className="select-arrow-candy shrink-0 border border-candyLine rounded-full px-3 py-1.5 font-heading font-bold text-[11.5px] text-[#1E1B16] outline-none cursor-pointer"
+        <Dropdown
+            aria-label="Category"
+            value={selectedCategoryId != null ? String(selectedCategoryId) : ''}
+            onChange={(v) => setSelectedCategoryId(v ? Number(v) : null)}
+            className="shrink-0 border border-candyLine rounded-full px-3 py-1.5 font-heading font-bold text-[11.5px] text-[#1E1B16]"
             style={{ background: catColor }}
-        >
-            <option value="">Uncategorized</option>
-            {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-        </select>
+            chevronClassName="text-[#1E1B16]"
+            options={[
+                { value: '', label: 'Uncategorized', color: CATEGORY_COLORS.default },
+                ...categories.map(cat => ({ value: String(cat.id), label: cat.name, color: getCategoryColor(cat.name) })),
+            ]}
+        />
 
         <div className="w-24 text-right shrink-0">
           <span className={`font-money text-[17px] tracking-[-0.02em] ${isCredit ? 'text-semantic-green' : 'text-ink'}`}>

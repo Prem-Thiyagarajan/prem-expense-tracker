@@ -2,6 +2,8 @@
 
 import React from 'react';
 import type { Category, Account } from '../../types';
+import Dropdown from '../../components/ui/Dropdown';
+import DateRangePicker from '../../components/ui/DateRangePicker';
 
 interface ExpenseFiltersProps {
   onApplyFilters: () => void;
@@ -47,19 +49,25 @@ const ExpenseFilters: React.FC<ExpenseFiltersProps> = ({
     <div className="bg-card border-2 border-line rounded-cardLg p-5">
       <div className="flex flex-wrap items-end gap-3.5">
         <div>
-          <label className={fieldLabel}>From</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={fieldInput} />
-        </div>
-        <div>
-          <label className={fieldLabel}>To</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={fieldInput} />
+          <label className={fieldLabel}>Dates</label>
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(s, e) => { setStartDate(s); setEndDate(e); }}
+          />
         </div>
         <div>
           <label className={fieldLabel}>Account</label>
-          <select value={accountId} onChange={e => setAccountId(e.target.value)} className={`${fieldInput} select-arrow cursor-pointer`}>
-            <option value="">All accounts</option>
-            {allAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-          </select>
+          <Dropdown
+            aria-label="Account"
+            value={accountId}
+            onChange={setAccountId}
+            className={`${fieldInput} min-w-[160px]`}
+            options={[
+              { value: '', label: 'All accounts' },
+              ...allAccounts.map(acc => ({ value: String(acc.id), label: acc.name })),
+            ]}
+          />
         </div>
         <div>
           <label className={fieldLabel}>Type</label>
