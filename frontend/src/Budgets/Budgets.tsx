@@ -1,8 +1,8 @@
 // File: src/Budgets/Budgets.tsx
 
 import React, { useState, useEffect } from 'react';
-import { getBudgetPlan, saveBudgetPlan, deleteBudgetPlan } from '../api/apiClient';
-import type { BudgetPageData, BudgetPlanItem } from '../types';
+import { getBudgetPlan, saveBudgetPlan, deleteBudgetPlan, getGoals, getSubscriptions, getCategories } from '../api/apiClient';
+import type { BudgetPageData, BudgetPlanItem, Goal, Subscription, Category } from '../types';
 import toast from 'react-hot-toast';
 import { useMonth } from '../components/MonthContext';
 import MonthControl from '../components/MonthControl';
@@ -11,6 +11,8 @@ import SmartEmptyState from './components/SmartEmptyState';
 import MonitoringView from './components/MonitoringView';
 import SetupModal from './components/SetupModal';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import BillRadarCard from './components/BillRadarCard';
+import CategoryLimitsSection from './components/CategoryLimitsSection';
 
 const Budgets: React.FC = () => {
     const { month: currentMonth } = useMonth();
@@ -19,6 +21,12 @@ const Budgets: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
     const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+
+    // Bill radar + Category limits -- additive to the existing plan/pacing
+    // fetch above, not a replacement for it.
+    const [goals, setGoals] = useState<Goal[]>([]);
+    const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
 
     const isPastMonth = (): boolean => {
         const today = new Date();
@@ -44,6 +52,34 @@ const Budgets: React.FC = () => {
     useEffect(() => {
         fetchBudgetPlan(currentMonth);
     }, [currentMonth]);
+
+    const fetchGoals = async (month: string) => {
+        try {
+            const result = await getGoals(month);
+            setGoals(result);
+        } catch (err) {
+            setGoals([]);
+        }
+    };
+
+    useEffect(() => {
+        fetchGoals(currentMonth);
+        getSubscriptions().then(setSubscriptions).catch(() => setSubscriptions([]));
+    }, [currentMonth]);
+
+    // Categories aren't month-scoped -- fetched once, used by the Category
+    // limits "new goal" form to know which categories still lack a limit.
+    useEffect(() => {
+        getCategories().then(setCategories).catch(() => setCategories([]));
+    }, []);
+
+    const handleGoalsChanged = () => {
+        // A goal IS a budget_plan row under the hood, so any goal create/edit/
+        // delete can change the totals MonitoringView already shows -- refresh
+        // both rather than just the goals list.
+        fetchGoals(currentMonth);
+        fetchBudgetPlan(currentMonth);
+    };
 
     const handleSaveChanges = async (planToSave: BudgetPlanItem[]) => {
         setIsSetupModalOpen(false);
@@ -115,6 +151,21 @@ const Budgets: React.FC = () => {
                     <MonthControl />
                 </div>
                 {renderContent()}
+                {!isLoading && !error && data && (
+                    <>
+                        <BillRadarCard subscriptions={subscriptions} month={currentMonth} />
+                        <div className="border-t-2 border-line pt-6">
+                            <CategoryLimitsSection
+                                goals={goals}
+                                planItems={data.plan || []}
+                                categories={categories}
+                                month={currentMonth}
+                                isPastMonth={isPastMonth()}
+                                onChanged={handleGoalsChanged}
+                            />
+                        </div>
+                    </>
+                )}
             </div>
             {data && (
                 <SetupModal
