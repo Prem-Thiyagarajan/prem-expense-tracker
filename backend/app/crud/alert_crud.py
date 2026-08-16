@@ -45,6 +45,52 @@ def create_new_category_alert(db: Session, user_id: int, category_name: str):
     db.add(alert)
     return alert
 
+def create_new_merchant_alert(
+    db: Session,
+    user_id: int,
+    transaction_id: int,
+    description: str,
+    suggested_merchant_id: int,
+    suggested_merchant_name: str,
+    suggested_category_id: int | None,
+    match_reason: str,
+    similarity: float | None,
+):
+    """Creates a suggestion alert for a medium-confidence (fuzzy) merchant
+    match -- the transaction is left unmapped until the user accepts or
+    dismisses this from the notification dropdown. High-confidence (exact
+    handle) matches never reach this function; they auto-apply instead, see
+    app/services/merchant_matching_service.py.
+    """
+    # One unacknowledged suggestion per transaction -- a rescan re-running
+    # over an already-suggested (still-unmapped) transaction shouldn't pile
+    # up duplicate alerts for it.
+    existing_alert = db.query(Alert).filter(
+        Alert.user_id == user_id,
+        Alert.type == 'new_merchant',
+        Alert.context['transaction_id'].as_integer() == transaction_id,
+        Alert.is_acknowledged == False
+    ).first()
+    if existing_alert:
+        return None
+
+    alert = Alert(
+        user_id=user_id,
+        type='new_merchant',
+        context={
+            "transaction_id": transaction_id,
+            "description_snippet": description[:120],
+            "suggested_merchant_id": suggested_merchant_id,
+            "suggested_merchant_name": suggested_merchant_name,
+            "suggested_category_id": suggested_category_id,
+            "match_reason": match_reason,
+            "similarity": similarity,
+        },
+        triggered_at=datetime.utcnow(),
+    )
+    db.add(alert)
+    return alert
+
 def get_unread_alerts(db: Session, user_id: int):
     return db.query(Alert).options(joinedload(Alert.goal).joinedload(Goal.category)).filter(
         Alert.user_id == user_id,

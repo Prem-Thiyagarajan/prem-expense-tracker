@@ -21,10 +21,7 @@ const Settings = lazy(() => import('./Settings/Settings'));
 const LoginPage = lazy(() => import('./auth/LoginPage'));
 const RegisterPage = lazy(() => import('./auth/RegisterPage'));
 const ProfilePage = lazy(() => import('./Profile/ProfilePage'));
-// TODO(Part 2): add `const Merchants = lazy(() => import('./Merchants/Merchants'));`
-// and a `<Route path="merchants" element={<Merchants />} />` once that page
-// ships. The Navbar's Merchants pill exists from Part 1 onward and falls
-// through to the catch-all redirect below until then.
+const Merchants = lazy(() => import('./Merchants/Merchants'));
 
 // A simple loading component to show as a fallback while pages are being fetched.
 const PageLoader: React.FC = () => (
@@ -78,6 +75,7 @@ function App() {
                 <Route path="budgets" element={<Budgets />} />
                 <Route path="expenses" element={<Expenses />} />
                 <Route path="analytics" element={<Analytics />} />
+                <Route path="merchants" element={<Merchants />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="profile" element={<ProfilePage />} />
               </Route>

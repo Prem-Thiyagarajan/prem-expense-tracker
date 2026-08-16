@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Bell, Clock, CheckCircle, PlusCircle, X, Sun, Moon, Sparkles, LogOut, User } from "lucide-react";
+import { Bell, Clock, CheckCircle, PlusCircle, X, Sun, Moon, Sparkles, LogOut, User, Check } from "lucide-react";
 import logo from "../assets/logo.png";
-import { logout, getUnreadAlerts, acknowledgeAlert } from "../api/apiClient";
+import { logout, getUnreadAlerts, acknowledgeAlert, updateTransaction } from "../api/apiClient";
 import type { Alert } from "../types";
 import dayjs from "dayjs";
 import duration from 'dayjs/plugin/duration';
@@ -116,6 +116,18 @@ const Navbar: React.FC = () => {
     }
   };
 
+  const handleAcceptMerchantSuggestion = async (alert: Alert) => {
+    const { transaction_id, suggested_merchant_id, suggested_category_id } = alert.context || {};
+    if (!transaction_id || !suggested_merchant_id) return;
+    setAlerts(prevAlerts => prevAlerts.filter(a => a.id !== alert.id));
+    try {
+      await updateTransaction(transaction_id, { merchant_id: suggested_merchant_id, category_id: suggested_category_id ?? null });
+      await acknowledgeAlert(alert.id);
+    } catch (error) {
+      console.error("Failed to apply merchant suggestion:", error);
+    }
+  };
+
   const renderAlertContent = (alert: Alert) => {
     if (alert.type === 'new_category' && alert.context?.category_name) {
       return (
@@ -154,8 +166,28 @@ const Navbar: React.FC = () => {
       );
     }
 
-    // TODO(Part 2): render alert.type === 'new_merchant' the same visual way,
-    // with accept -> apply the suggested merchant/category, dismiss -> acknowledge.
+    if (alert.type === 'new_merchant' && alert.context?.suggested_merchant_name) {
+      return (
+        <div key={alert.id} className="p-3 border-b border-hair hover:bg-hair/60 flex items-start gap-3">
+          <div className="w-8 h-8 rounded-full border-1.5 border-candyLine bg-candy-yellow flex items-center justify-center shrink-0 mt-0.5" />
+          <div className="flex-grow min-w-0">
+            <p className="text-sm font-body">New merchant found: <strong className="font-heading">{alert.context.suggested_merchant_name}</strong></p>
+            <p className="text-xs font-mono text-faint mt-1 truncate">{alert.context.description_snippet}</p>
+            <p className="text-xs font-body text-faint mt-0.5">
+              {alert.context.match_reason} · {dayjs(alert.triggered_at).fromNow()}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => handleAcknowledgeAlert(alert.id)} title="Dismiss" className="p-1 text-muted hover:text-semantic-red">
+              <X size={18} />
+            </button>
+            <button onClick={() => handleAcceptMerchantSuggestion(alert)} title="Accept" className="p-1 text-muted hover:text-semantic-green">
+              <Check size={18} />
+            </button>
+          </div>
+        </div>
+      );
+    }
 
     return null;
   };

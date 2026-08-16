@@ -83,6 +83,25 @@ export interface Account {
   provider: string;
 }
 
+export interface Merchant {
+  id: number;
+  name: string;
+  category_id: number | null;
+  user_id: number;
+}
+
+export interface MerchantCluster {
+  handle: string | null;
+  sample_description: string;
+  transaction_ids: number[];
+  count: number;
+}
+
+export interface RescanResult {
+  auto_applied: number;
+  suggested: number;
+}
+
 // --- ANALYTICS-SPECIFIC TYPES ---
 
 export interface AnalyticsOverview {
@@ -182,9 +201,17 @@ export interface Alert {
   is_acknowledged: boolean;
   
   // ✅ NEW FIELDS
-  type: 'budget' | 'new_category';
+  type: 'budget' | 'new_category' | 'new_merchant';
   context: {
     category_name?: string; // Will exist for 'new_category' type
+    // 'new_merchant' fields -- see alert_crud.create_new_merchant_alert
+    transaction_id?: number;
+    description_snippet?: string;
+    suggested_merchant_id?: number;
+    suggested_merchant_name?: string;
+    suggested_category_id?: number | null;
+    match_reason?: string;
+    similarity?: number | null;
   } | null;
 
   goal: { // Can be null for new alerts

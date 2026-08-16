@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { createTransaction, updateTransaction } from '../../api/apiClient';
-import type { Transaction, Category, Account, Tag } from '../../types';
+import type { Transaction, Category, Account, Tag, Merchant } from '../../types';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
   categories: Category[];
   accounts: Account[];
   allTags: Tag[];
+  merchants: Merchant[];
 }
 
 // Category colours per handoff/README.md §Category colours + icons — mirrors
@@ -36,7 +37,7 @@ const toDateInputValue = (d: Date): string => {
 const chipBtn = "px-3 py-1.5 rounded-full border border-line font-heading font-bold text-[11px] whitespace-nowrap transition-all duration-chip";
 const fieldLabel = "block font-body font-semibold text-[9.5px] uppercase tracking-[0.14em] text-muted mt-3.5 mb-1.5";
 
-const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactionToEdit, categories, accounts, allTags }) => {
+const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactionToEdit, categories, accounts, allTags, merchants }) => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
   const [txnDate, setTxnDate] = useState('');
@@ -44,6 +45,12 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
   const [accountId, setAccountId] = useState<number | ''>('');
   const [type, setType] = useState<'debit' | 'credit'>('debit');
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  // Merchant is a lightweight name-autocomplete (native <datalist>, no new
+  // dependency): merchantName is what's displayed/typed, merchantId only
+  // gets set when it resolves to an exact existing merchant name -- typing
+  // something that doesn't match just leaves the transaction unlinked.
+  const [merchantName, setMerchantName] = useState('');
+  const [merchantId, setMerchantId] = useState<number | ''>('');
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +67,9 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
         setAccountId(transactionToEdit.account_id);
         setType(transactionToEdit.type);
         setSelectedTagIds(transactionToEdit.tags ? transactionToEdit.tags.map(t => t.id) : []);
+        const linkedMerchant = merchants.find(m => m.id === transactionToEdit.merchant_id);
+        setMerchantId(transactionToEdit.merchant_id ?? '');
+        setMerchantName(linkedMerchant?.name ?? '');
       } else {
         setDescription('');
         setAmount('');
@@ -68,10 +78,12 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
         setAccountId(accounts[0]?.id || '');
         setType('debit');
         setSelectedTagIds([]);
+        setMerchantId('');
+        setMerchantName('');
       }
       setError(null);
     }
-  }, [transactionToEdit, isOpen, isEditMode, accounts]);
+  }, [transactionToEdit, isOpen, isEditMode, accounts, merchants]);
 
   if (!isOpen) {
     return null;
@@ -79,6 +91,12 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
 
   const toggleTag = (id: number) => {
     setSelectedTagIds(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
+  };
+
+  const handleMerchantNameChange = (value: string) => {
+    setMerchantName(value);
+    const exact = merchants.find(m => m.name.toLowerCase() === value.trim().toLowerCase());
+    setMerchantId(exact ? exact.id : '');
   };
 
   const todayValue = toDateInputValue(new Date());
@@ -100,6 +118,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
         txn_date: new Date(txnDate).toISOString(),
         category_id: categoryId === '' ? null : Number(categoryId),
         account_id: Number(accountId),
+        merchant_id: merchantId === '' ? null : Number(merchantId),
         type,
         source: 'Manual',
         tag_ids: selectedTagIds,
@@ -217,7 +236,19 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
 
           {/* Right column */}
           <div>
-            <label className="block font-body font-semibold text-[9.5px] uppercase tracking-[0.14em] text-muted mb-1.5">Category</label>
+            <label className="block font-body font-semibold text-[9.5px] uppercase tracking-[0.14em] text-muted mb-1.5">Merchant</label>
+            <input
+              list="merchant-options"
+              value={merchantName}
+              onChange={e => handleMerchantNameChange(e.target.value)}
+              placeholder="Start typing a merchant…"
+              className="w-full bg-card border border-line rounded-chip px-3.5 py-2.5 font-body font-medium text-xs text-ink outline-none mb-1"
+            />
+            <datalist id="merchant-options">
+              {merchants.map(m => <option key={m.id} value={m.name} />)}
+            </datalist>
+
+            <label className="block font-body font-semibold text-[9.5px] uppercase tracking-[0.14em] text-muted mb-1.5 mt-3">Category</label>
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
