@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { Bell, Clock, CheckCircle, PlusCircle, X, Sun, Moon, Sparkles, LogOut, User, Check } from "lucide-react";
+import { Bell, Clock, CheckCircle, PlusCircle, X, Sun, Moon, Sparkles, LogOut, User, CheckCheck } from "lucide-react";
 import logo from "../assets/glyph-lime.svg";
-import { logout, getUnreadAlerts, acknowledgeAlert, updateTransaction } from "../api/apiClient";
+import { logout, getUnreadAlerts, acknowledgeAlert, acknowledgeAllAlerts } from "../api/apiClient";
 import type { Alert } from "../types";
+import { getCategoryIcon } from "../utils/iconHelper";
 import dayjs from "dayjs";
 import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -86,11 +87,20 @@ const Navbar: React.FC = () => {
     return () => clearInterval(intervalId);
   }, []);
 
+  // Only budget-threshold and new-category alerts show up in this bell --
+  // 'new_merchant' suggestions live on the Merchants page instead (its own
+  // "Suggested matches" section), since they're routine and numerous enough
+  // (one per fuzzy-matched transaction) to otherwise drown out the alerts
+  // that actually need attention. Matches PFT-Mobile's AlertBell, which
+  // similarly only surfaces budget alerts -- this is why the two apps used
+  // to show different notification counts for the same account.
+  const RELEVANT_TYPES: Alert['type'][] = ['budget', 'new_category'];
+
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
         const unreadAlerts = await getUnreadAlerts();
-        setAlerts(unreadAlerts);
+        setAlerts(unreadAlerts.filter(a => RELEVANT_TYPES.includes(a.type)));
       } catch (error) {
         console.error("Failed to fetch alerts:", error);
       }
@@ -99,6 +109,7 @@ const Navbar: React.FC = () => {
     fetchAlerts();
     const intervalId = setInterval(fetchAlerts, 60000);
     return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAcknowledgeAlert = async (alertId: number) => {
@@ -110,6 +121,17 @@ const Navbar: React.FC = () => {
     }
   };
 
+  const handleMarkAllAsRead = async () => {
+    const previousAlerts = alerts;
+    setAlerts([]);
+    try {
+      await acknowledgeAllAlerts();
+    } catch (error) {
+      console.error("Failed to mark all alerts as read:", error);
+      setAlerts(previousAlerts);
+    }
+  };
+
   const handleNewCategoryAlertClick = (alert: Alert) => {
     if (alert.context?.category_name) {
       navigate('/settings', { state: { newCategoryName: alert.context.category_name } });
@@ -118,23 +140,11 @@ const Navbar: React.FC = () => {
     }
   };
 
-  const handleAcceptMerchantSuggestion = async (alert: Alert) => {
-    const { transaction_id, suggested_merchant_id, suggested_category_id } = alert.context || {};
-    if (!transaction_id || !suggested_merchant_id) return;
-    setAlerts(prevAlerts => prevAlerts.filter(a => a.id !== alert.id));
-    try {
-      await updateTransaction(transaction_id, { merchant_id: suggested_merchant_id, category_id: suggested_category_id ?? null });
-      await acknowledgeAlert(alert.id);
-    } catch (error) {
-      console.error("Failed to apply merchant suggestion:", error);
-    }
-  };
-
   const renderAlertContent = (alert: Alert) => {
     if (alert.type === 'new_category' && alert.context?.category_name) {
       return (
         <div key={alert.id} className="p-3 border-b border-hair hover:bg-hair/60 flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full border-1.5 border-candyLine bg-candy-lilac flex items-center justify-center shrink-0 mt-0.5" />
+          {getCategoryIcon(alert.context.category_name, null)}
           <div className="flex-grow">
             <p className="text-sm font-body">New category found: <strong className="font-heading">{alert.context.category_name}</strong></p>
             <p className="text-xs font-body text-faint mt-1">{dayjs(alert.triggered_at).fromNow()}</p>
@@ -154,7 +164,7 @@ const Navbar: React.FC = () => {
     if (alert.type === 'budget' && alert.goal) {
       return (
         <div key={alert.id} className="p-3 border-b border-hair hover:bg-hair/60 flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full border-1.5 border-candyLine bg-candy-coral flex items-center justify-center shrink-0 mt-0.5" />
+          {getCategoryIcon(alert.goal?.category?.name, alert.goal?.category?.icon_name)}
           <div className="flex-grow">
             <p className="text-sm font-body">
               You've used {alert.threshold_percentage}% of your <strong className="font-heading">{alert.goal?.category?.name || 'a'}</strong> budget for {dayjs(alert.goal?.month + "-01").format("MMMM")}.
@@ -164,29 +174,6 @@ const Navbar: React.FC = () => {
           <button onClick={() => handleAcknowledgeAlert(alert.id)} title="Mark as read" className="p-1 text-muted hover:text-semantic-green shrink-0">
             <CheckCircle size={18} />
           </button>
-        </div>
-      );
-    }
-
-    if (alert.type === 'new_merchant' && alert.context?.suggested_merchant_name) {
-      return (
-        <div key={alert.id} className="p-3 border-b border-hair hover:bg-hair/60 flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full border-1.5 border-candyLine bg-candy-yellow flex items-center justify-center shrink-0 mt-0.5" />
-          <div className="flex-grow min-w-0">
-            <p className="text-sm font-body">New merchant found: <strong className="font-heading">{alert.context.suggested_merchant_name}</strong></p>
-            <p className="text-xs font-mono text-faint mt-1 truncate">{alert.context.description_snippet}</p>
-            <p className="text-xs font-body text-faint mt-0.5">
-              {alert.context.match_reason} · {dayjs(alert.triggered_at).fromNow()}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button onClick={() => handleAcknowledgeAlert(alert.id)} title="Dismiss" className="p-1 text-muted hover:text-semantic-red">
-              <X size={18} />
-            </button>
-            <button onClick={() => handleAcceptMerchantSuggestion(alert)} title="Accept" className="p-1 text-muted hover:text-semantic-green">
-              <Check size={18} />
-            </button>
-          </div>
         </div>
       );
     }
@@ -267,7 +254,14 @@ const Navbar: React.FC = () => {
             <div className="absolute right-0 mt-2 w-[378px] bg-card text-ink border-2 border-line rounded-cardLg shadow-overlay z-50 max-h-96 overflow-y-auto">
               <div className="p-3.5 font-heading font-bold text-sm border-b-2 border-line flex items-center justify-between">
                 <span>Notifications</span>
-                {unreadCount > 0 && <span className="text-xs font-body text-muted">{unreadCount} unread</span>}
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllAsRead}
+                    className="flex items-center gap-1 font-body font-semibold text-xs text-link hover:underline"
+                  >
+                    <CheckCheck size={13} /> Read all
+                  </button>
+                )}
               </div>
               {alerts.length > 0 ? (
                 alerts.map(alert => renderAlertContent(alert))
