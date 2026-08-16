@@ -5,6 +5,8 @@ from app.models.transaction import Transaction
 from app.models.goal import Goal
 from app.models.category import Category
 from app.models.alert import Alert
+from app.models.tag import Tag
+from app.models.transaction_tag import TransactionTag
 from app.crud import goal_crud, alert_crud
 from app.schemas.budget_plan_schema import BudgetPlanUpdate
 from datetime import datetime, date
@@ -35,13 +37,23 @@ def get_budget_plan(db: Session, month: str, user_id: int):
     next_month_start = month_start + relativedelta(months=1)
     today = date.today()
 
-    # NOTE: the "Exclude from Analytics" tag is deliberately NOT applied here.
-    # It suppresses transactions from reporting surfaces (dashboard, analytics),
-    # but budgeting is about money actually leaving the account: a spend you hid
-    # from your charts still consumed the category's limit. Every other service
-    # that reads this tag excludes; budget features are the single exception.
-    # alert_service.get_total_spend_for_category_in_month does the same, so
-    # budget progress and budget alerts always agree on one number.
+    # The "Exclude from Analytics" tag IS applied here (as of the web redesign) --
+    # previously budgets deliberately ignored it on the theory that a spend
+    # hidden from charts still consumed the category's limit. In practice this
+    # tag is used almost exclusively for capital transfers (moving money to
+    # another of your own accounts, one-off RTGS/NEFT settlements) -- not real
+    # spending against any category -- and letting a single ₹5L transfer blow a
+    # ₹40k budget out to "1,232% over" made Budgets actively misleading rather
+    # than conservative. Now consistent with dashboard/analytics.
+    # alert_service.get_total_spend_for_category_in_month applies the same
+    # filter, so budget progress and budget alerts always agree on one number.
+    exclude_tag = db.query(Tag).filter(Tag.name == "Exclude from Analytics", Tag.user_id == user_id).first()
+    transactions_to_exclude = []
+    if exclude_tag:
+        transactions_to_exclude = [
+            t.transaction_id for t in db.query(TransactionTag.transaction_id)
+            .filter(TransactionTag.tag_id == exclude_tag.id).all()
+        ]
 
     existing_goals = db.query(Goal).filter(Goal.month == month, Goal.user_id == user_id).all()
 
@@ -56,7 +68,8 @@ def get_budget_plan(db: Session, month: str, user_id: int):
             Transaction.user_id == user_id,
             Transaction.type == "debit",
             Transaction.txn_date >= month_start,
-            Transaction.txn_date < next_month_start
+            Transaction.txn_date < next_month_start,
+            Transaction.id.notin_(transactions_to_exclude)
         ).group_by(Transaction.category_id).all())
 
         goal_map = {goal.category_id: goal for goal in existing_goals}
@@ -118,7 +131,8 @@ def get_budget_plan(db: Session, month: str, user_id: int):
         pacing_query = text("""
             WITH daily_sums AS (
                 SELECT date(txn_date) as day, SUM(amount) as daily_total FROM transactions
-                WHERE user_id = :user_id AND type = 'debit' AND txn_date >= :month_start AND txn_date < :next_month_start GROUP BY 1
+                WHERE user_id = :user_id AND type = 'debit' AND txn_date >= :month_start AND txn_date < :next_month_start
+                AND id NOT IN :excluded_ids GROUP BY 1
             ), all_days AS (
                 SELECT generate_series(date_trunc('month', CAST(:month_start AS date)),
                 date_trunc('month', CAST(:month_start AS date)) + interval '1 month - 1 day', '1 day'::interval)::date AS day
@@ -127,7 +141,8 @@ def get_budget_plan(db: Session, month: str, user_id: int):
             FROM all_days d LEFT JOIN daily_sums ds ON d.day = ds.day
         """)
         pacing_result = db.execute(pacing_query, {
-            "user_id": user_id, "month_start": month_start, "next_month_start": next_month_start
+            "user_id": user_id, "month_start": month_start, "next_month_start": next_month_start,
+            "excluded_ids": tuple(transactions_to_exclude) if transactions_to_exclude else (0,)
         }).fetchall()
         df = pd.DataFrame(pacing_result, columns=['day', 'cumulative_spend']).ffill()
         pacing_data = [{"day": row.day.day, "actualSpend": float(row.cumulative_spend)} for index, row in df.iterrows()]
@@ -144,7 +159,8 @@ def get_budget_plan(db: Session, month: str, user_id: int):
             Transaction.user_id == user_id,
             Transaction.type == "debit",
             Transaction.txn_date >= avg_period_start,
-            Transaction.txn_date < avg_period_end
+            Transaction.txn_date < avg_period_end,
+            Transaction.id.notin_(transactions_to_exclude)
         )
 
         historical_spend_rows = historical_base_query.with_entities(func.to_char(Transaction.txn_date, "YYYY-MM").label("month"), func.sum(Transaction.amount).label("total_spend")).group_by("month").order_by("month").all()
@@ -158,7 +174,8 @@ def get_budget_plan(db: Session, month: str, user_id: int):
             Transaction.user_id == user_id,
             Transaction.type == "debit",
             Transaction.txn_date >= month_start,
-            Transaction.txn_date < next_month_start
+            Transaction.txn_date < next_month_start,
+            Transaction.id.notin_(transactions_to_exclude)
         ).group_by(Transaction.category_id).all()
         current_spend_map = {row[0]: float(row[1]) for row in current_month_spend_rows}
         

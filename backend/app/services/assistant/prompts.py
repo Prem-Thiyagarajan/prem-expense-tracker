@@ -43,10 +43,9 @@ SHEETS (open= value; route it belongs to)
 
 RULES OF THE DATA
  - budget 0 = no limit set, not a limit of zero.
- - Transactions tagged "Exclude from Analytics" are hidden from the dashboard,
-   analytics and Wrapped, but DO still count towards budgets (spent, remaining,
-   pacing, alerts). The tag hides a spend from reporting; it does not refund it.
-   That is why Budgets can show more than the dashboard.
+ - Transactions tagged "Exclude from Analytics" are hidden everywhere -- dashboard,
+   analytics, Wrapped, AND budgets (spent, remaining, pacing, alerts). Mostly used
+   for capital transfers (moving money to your own other accounts), not real spend.
  - Budgets are per-month and do not carry forward.
  - Amounts are Indian Rupees; write them as Rs.1,234.
 """.strip()
