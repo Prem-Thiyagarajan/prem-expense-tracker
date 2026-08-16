@@ -34,14 +34,17 @@ router = APIRouter(tags=["Assistant"])
 
 # Navigate targets the model is allowed to emit. Anything outside these sets is
 # dropped server-side, and the client re-validates against its own copy — a
-# hallucinated route can never reach router.push().
+# hallucinated route can never reach router.push(). Kept in sync with
+# frontend/src/App.tsx's actual routes -- this allow-list had drifted from
+# them (/budget, /trends, /manage/* never existed; /dashboard, /analytics,
+# /merchants were missing), which silently dropped every navigate the model
+# proposed for those screens. See WEB_REDESIGN_BRIEF.md Part 3.
 ALLOWED_ROUTES = {
-    "/", "/expenses", "/budget", "/trends", "/profile",
-    "/manage/categories", "/manage/accounts", "/manage/tags",
+    "/", "/dashboard", "/expenses", "/budgets", "/analytics",
+    "/merchants", "/settings", "/profile",
 }
 ALLOWED_SHEETS = {
     "add-transaction", "budget-edit", "month-picker",
-    "category-grid", "change-password", "upload-statements",
 }
 
 NAVIGATE_MARKER = "<<NAVIGATE"

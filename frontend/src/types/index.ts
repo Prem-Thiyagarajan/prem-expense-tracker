@@ -102,6 +102,69 @@ export interface RescanResult {
   suggested: number;
 }
 
+// --- GOALS (per-category monthly limits) ---
+// "Goal" here is a per-category monthly spend limit, not a savings-goal
+// concept -- the same underlying data budget_plan_router's whole-month batch
+// upsert already manages (see backend/app/services/budget_plan_service.py,
+// which calls goal_crud directly). This is the granular single-item CRUD
+// shape for the Budgets page's "Category limits" section. No `recurring`
+// field -- the backend model doesn't have one, despite the handoff doc's
+// mock implying it does.
+export interface Goal {
+  id: number;
+  category_id: number;
+  month: string; // "YYYY-MM"
+  limit_amount: number;
+  category: Category;
+}
+
+// --- SUBSCRIPTIONS (Bill Radar) ---
+export type SubscriptionInterval = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+
+export interface Subscription {
+  id: number;
+  user_id: number;
+  name: string;
+  description: string | null;
+  amount: number;
+  interval: SubscriptionInterval;
+  first_due_date: string; // "YYYY-MM-DD"
+  last_paid_date: string | null;
+  is_active: boolean;
+  // Computed server-side, not stored columns.
+  upcoming_due_date: string;
+  overdue_due_date: string | null;
+}
+
+// --- ASSISTANT ---
+export interface AssistantChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AssistantHealth {
+  chat: boolean;
+  voice: boolean;
+  voice_reason?: string | null;
+}
+
+export interface AssistantNavigateAction {
+  type: 'navigate';
+  route: string;
+  open?: string;
+  label: string;
+}
+
+// One SSE event from POST /assistant/chat -- see backend/app/api/assistant_router.py's
+// _run_agent for the exact shapes emitted.
+export type AssistantStreamEvent =
+  | { type: 'status'; state: 'thinking' | 'fallback' }
+  | { type: 'delta'; text: string }
+  | { type: 'tool'; name: string }
+  | (AssistantNavigateAction)
+  | { type: 'error'; code: string; message: string }
+  | { type: 'done' };
+
 // --- ANALYTICS-SPECIFIC TYPES ---
 
 export interface AnalyticsOverview {
