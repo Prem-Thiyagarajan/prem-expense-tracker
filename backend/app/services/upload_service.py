@@ -10,38 +10,23 @@ from thefuzz import process as fuzzy_process
 
 from app.models.transaction import Transaction
 from app.models.category import Category
-from app.models.merchant import Merchant
 from app.crud import alert_crud
+from app.services import merchant_matching_service
 
 logger = logging.getLogger(__name__)
 
 # --- DATA MAPPING RULES ---
+# The old MERCHANT_CATEGORY_RULES hardcoded dict (keyword -> merchant name +
+# category) has been replaced by dynamic matching against the `merchants`
+# table -- see merchant_matching_service.py. Its ~40 entries were migrated
+# into per-user Merchant rows as one-time seed data by
+# alembic/versions/0003_seed_merchants_from_rules.py, so existing users'
+# upload behaviour doesn't regress; the DB is now the single source of truth.
 TRANSFER_KEYWORDS = {
     'v revathi', 't prem', 'satish p', 'mohan kumar a', 'putte gowda', 'naveen b', 'madhu c s', 'perumal p',
     'saroja', 'c vamsi krishna', 'vivek kumar', 'pavan k', 'kiran kumar k', 'manjunath', 'sagar', 'm anand',
     'semeema', 'sumith sigtia', 'thiyagarajan.su', 'yatha jain', 'kapil.loginhdi', 'amogh.dr7',
     'jerry10102002', 'shebak das', 'mrs janaki srinivasan',
-}
-MERCHANT_CATEGORY_RULES = {
-    'zomato': ('Zomato', 'Food'), 'swiggy': ('Swiggy', 'Food'), 'udupi sannid': ('M S Sri Udupi Sannidhi', 'Food'),
-    'eazypay.jzrwpsu': ('M S Sri Udupi Sannidhi', 'Food'), 'burma burm': ('Burma Burma', 'Food'),
-    'little italy': ('Little Italy', 'Food'), 'wave cafe': ('Wave Cafe', 'Food'),
-    'sarkaar hospitality': ('Sarkaar Hospitality', 'Food'), 'gopizza': ('GOPIZZA', 'Food'),
-    'california burrito': ('California Burrito', 'Food'), 'bharatpe': ('BharatPe Merchant', 'Food'),
-    'zepto': ('Zepto', 'Groceries'), 'bbinstant': ('BigBasket', 'Groceries'), 'bigbasket': ('BigBasket', 'Groceries'),
-    'luludaily': ('Lulu Hypermarket', 'Groceries'), 'thavakkal bazaar': ('Thavakkal Bazaar', 'Groceries'),
-    'bangalore metro rail': ('Namma Metro', 'Travel'), 'bmrc': ('Namma Metro', 'Travel'),
-    'metro rail': ('Namma Metro', 'Travel'), 'uber': ('Uber', 'Travel'), 'redbus': ('Redbus', 'Travel'),
-    'paytm travel': ('Paytm Travel', 'Travel'), 'irctc': ('IRCTC', 'Travel'), 'auto service': ('Auto Service', 'Travel'),
-    'amazon': ('Amazon', 'Shopping'), 'amzn': ('Amazon', 'Shopping'), 'myntra': ('Myntra', 'Shopping'),
-    'snitch': ('SNITCH', 'Shopping'), 'jockey': ('Jockey', 'Shopping'), 'lifestyle': ('Lifestyle', 'Shopping'),
-    'findr management': ('Findr Management Solutions', 'Shopping'), 'stanzaliving': ('Stanza Living', 'Services'),
-    'dtwelve spaces': ('Stanza Living', 'Services'), 'pg rent': ('PG Rent', 'Rent'), 'spotify': ('Spotify', 'Bills'),
-    'microsoft': ('Microsoft', 'Bills'), 'alistetechnologies': ('Aliste Technologies', 'Services'),
-    'airtel': ('Airtel', 'Bills'), 'healthandglow': ('Health & Glow', 'Health & Wellness'),
-    'mass pharma': ('Pharmacy', 'Health & Wellness'), 'trustchemist': ('Pharmacy', 'Health & Wellness'),
-    'hairtel': ('Hairtel Salon', 'Personal Care'), 'bookmyshow': ('BookMyShow', 'Entertainment'),
-    'nova gamin': ('Nova Gaming', 'Entertainment'), 'financewithsharan': ('FinanceWithSharan', 'Education'),
 }
 CATEGORY_ALIASES = {"miscellaneous": ["misc", "miscelleaneous"], "entertainment": ["ent"], "transportation": ["transport"]}
 
@@ -82,12 +67,19 @@ def process_and_insert_transactions(db: Session, transactions: list, user_id: in
     """
     existing_unique_keys = {res[0] for res in db.query(Transaction.unique_key).filter(Transaction.user_id == user_id).all()}
 
-    merchants_map = {m.name: m.id for m in db.query(Merchant).filter(Merchant.user_id == user_id).all()}
+    # Fingerprints of existing merchants, for the same handle/fuzzy matching
+    # POST /merchants/rescan uses -- see merchant_matching_service.py.
+    fingerprints = merchant_matching_service.build_fingerprints(db, user_id=user_id)
     user_categories_db = db.query(Category).filter(Category.user_id == user_id).all()
     user_categories_map = {cat.id: cat.name for cat in user_categories_db}
 
     rows_to_insert = []
     newly_found_categories = set()
+    # Medium-confidence merchant suggestions can't get a new_merchant alert
+    # until the row actually has a DB id, which only exists after insert --
+    # queued here by unique_key, resolved once the INSERT...RETURNING comes
+    # back below.
+    pending_merchant_suggestions: dict[str, merchant_matching_service.MatchResult] = {}
 
     for txn_data in sorted(transactions, key=lambda x: x['txn_date']):
         if (txn_data.get('unique_key') and txn_data['unique_key'] in existing_unique_keys):
@@ -106,7 +98,7 @@ def process_and_insert_transactions(db: Session, transactions: list, user_id: in
             else:
                 newly_found_categories.add(user_remark.strip().title())
 
-        # Fallback: transfer keywords, then merchant rules
+        # Fallback: transfer keywords, then merchant matching
         if not detected_category_id:
             desc_lower = desc.lower()
             if any(keyword in desc_lower for keyword in TRANSFER_KEYWORDS):
@@ -114,14 +106,15 @@ def process_and_insert_transactions(db: Session, transactions: list, user_id: in
                 if transfer_cat_id:
                     detected_category_id = transfer_cat_id
             else:
-                for keyword, (merchant_name, category_name) in MERCHANT_CATEGORY_RULES.items():
-                    if keyword in desc_lower:
-                        detected_merchant_id = merchants_map.get(merchant_name)
-                        cat_id = next((_id for _id, name in user_categories_map.items() if name.lower() == category_name.lower()), None)
-                        if cat_id:
-                            detected_category_id = cat_id
-                        if detected_merchant_id or detected_category_id:
-                            break
+                match = merchant_matching_service.match_description(desc, fingerprints)
+                if match and match.confidence == merchant_matching_service.HIGH_CONFIDENCE:
+                    detected_merchant_id = match.merchant_id
+                    if match.category_id:
+                        detected_category_id = match.category_id
+                elif match and txn_data.get('unique_key'):
+                    # Medium confidence: leave the transaction unmapped, queue
+                    # a suggestion alert instead of auto-applying it.
+                    pending_merchant_suggestions[txn_data['unique_key']] = match
 
         # Default to Miscellaneous if nothing matched
         if not detected_category_id:
@@ -144,9 +137,20 @@ def process_and_insert_transactions(db: Session, transactions: list, user_id: in
         batch = rows_to_insert[i:i + _batch_size]
         stmt = pg_insert(Transaction).values(batch).on_conflict_do_nothing(
             index_elements=["user_id", "unique_key"]
-        )
+        ).returning(Transaction.id, Transaction.unique_key, Transaction.description)
         result = db.execute(stmt)
-        inserted_count += result.rowcount
+        inserted_rows = result.fetchall()
+        inserted_count += len(inserted_rows)
+
+        for txn_id, unique_key, description in inserted_rows:
+            match = pending_merchant_suggestions.get(unique_key)
+            if match:
+                alert_crud.create_new_merchant_alert(
+                    db, user_id=user_id, transaction_id=txn_id, description=description,
+                    suggested_merchant_id=match.merchant_id, suggested_merchant_name=match.merchant_name,
+                    suggested_category_id=match.category_id, match_reason=match.reason,
+                    similarity=match.similarity,
+                )
 
     for cat_name in newly_found_categories:
         alert_crud.create_new_category_alert(db, user_id=user_id, category_name=cat_name)

@@ -117,7 +117,7 @@ User action in browser
 | openpyxl / xlrd | 3.1.5 / 2.0.2 | Excel file support |
 | python-multipart | 0.0.20 | File upload (multipart form data) |
 | python-dotenv | 1.1.1 | Load `.env` file for local dev |
-| alembic | 1.16.4 | DB migrations (available, not yet wired into a migrations workflow) |
+| alembic | 1.16.4 | DB migrations — two migrations applied to date (`0001_content_based_unique_keys`, `0002_add_subscriptions_table`); `alembic upgrade head` is required after a fresh local DB creation |
 
 ### Frontend
 
@@ -128,7 +128,7 @@ User action in browser
 | Vite | 7.0.4 | Build tool and dev server |
 | React Router DOM | 7.7.0 | Client-side routing |
 | Axios | 1.10.0 | HTTP client with interceptors |
-| Tailwind CSS | 3.4.1 | Utility-first styling |
+| Tailwind CSS | 3.4.1 | Utility-first styling, extended with the app's design-token system (colors, radii, shadows, fonts) and a `data-theme` attribute for light/dark mode — see §6 |
 | Recharts | 3.1.0 | Charts (Area, Pie, Bar) |
 | lucide-react | 0.525.0 | Icon library (also used for category icons) |
 | react-select | 5.10.2 | Multi-select dropdown for tags |
@@ -152,6 +152,7 @@ prem-expense-tracker/               ← Monorepo root
 ├── backend/                        ← Python FastAPI application
 │   ├── requirements.txt            ← All Python dependencies
 │   ├── .env                        ← Local secrets (NOT committed to git in production)
+│   ├── alembic/versions/           ← DB migrations, applied in order (0001, 0002, 0003...)
 │   └── app/
 │       ├── main.py                 ← FastAPI app entry point
 │       ├── api/                    ← Route handlers
@@ -176,6 +177,7 @@ prem-expense-tracker/               ← Monorepo root
         ├── Expenses/               ← Expenses page and sub-components
         ├── Budgets/                ← Budgets page and sub-components
         ├── Analytics/              ← Analytics page and sub-components
+        ├── Merchants/              ← Merchant mapping page
         ├── Settings/               ← Settings page and sub-components
         ├── Profile/                ← Profile page
         ├── types/                  ← TypeScript interfaces
@@ -380,9 +382,20 @@ Turns an uploaded CSV/Excel/PDF file into a list of normalized transaction dicts
 
 All frontend source code lives inside `frontend/src/`. The app is a Single Page Application — React Router handles all navigation client-side.
 
+### Design system & theming
+
+The app uses a token-based design system ("Pocket" — warm cream field, 2px ink borders, hard offset shadows, candy-coloured accents):
+
+- **Tokens** live in `tailwind.config.js`'s `theme.extend` — `colors.{bg,card,ink,line,shadow,muted,faint,hair,link,nav}` are theme-aware (backed by CSS custom properties, see below), `colors.candy.{yellow,mint,pink,coral,blue,lilac}` are fixed accents identical in both themes, plus `colors.candyLine` (`#1E1B16`, fixed) — used specifically for borders drawn on top of a candy fill, since a theme-swapping border nearly disappears against a fill that doesn't itself change between themes. Also: `fontFamily.{heading,body,money,mono}` (Bricolage Grotesque / Archivo / Archivo Black / JetBrains Mono), `borderRadius.{chip,card,cardLg,sheet,pickerSheet}`, `borderWidth.{DEFAULT: 1.5px, 2: 2px}`, `boxShadow.{chip,card,overlay,sheet,press}` (hard offset shadows, no blur).
+- **`src/index.css`** defines the light-mode values as CSS custom properties on `:root` and dark-mode overrides under `[data-theme="dark"]`, plus `--scrim` (45% ink, used for modal/overlay backdrops). Fonts are loaded via a `<link>` in `index.html`, which also runs a small inline script that applies the persisted (or system) theme to `<html data-theme>` before React mounts, avoiding a flash of the wrong theme.
+- **`src/theme/ThemeContext.tsx`** — `ThemeProvider`/`useTheme()`. Persists the light/dark choice to `localStorage`, falls back to `prefers-color-scheme` on first load, sets `data-theme` on `document.documentElement`. Mounted at the top of `App.tsx`.
+- **`src/components/MonthContext.tsx`** — `MonthProvider`/`useMonth()`. One shared `{month: "YYYY-MM"}` selection (plus a picker-modal open/close flag) used by every month-scoped screen (Dashboard, Analytics in "month" view mode, Budgets), instead of each page owning its own local state. Mounted in `App.tsx`'s `MainLayout`.
+- **`src/components/MonthControl.tsx`** — the `‹ Month Year ›` control every month-scoped page renders; the label opens `MonthPickerModal`.
+- **`src/components/MonthPickerModal.tsx`** — year stepper (disabled past the current year) over a 3×4 month grid; future months are dashed/inert; the selected month gets the candy-blue fill.
+
 ### `src/App.tsx` — Router Configuration
 
-Defines all routes. Every route except `/login` and `/register` is wrapped in `<ProtectedRoute>`, which redirects unauthenticated users to `/login`.
+Defines all routes, wrapped in `ThemeProvider` and `MonthProvider`. Every route except `/login` and `/register` is wrapped in `<ProtectedRoute>`, which redirects unauthenticated users to `/login`.
 
 ```
 /                 → redirect to /dashboard
@@ -425,7 +438,7 @@ Defines all routes. Every route except `/login` and `/register` is wrapped in `<
 
 | File | Purpose |
 |---|---|
-| `Navbar.tsx` | Top navigation bar. Contains: logo, nav links, **session countdown timer** (decoded from JWT `exp`), **alert bell** (fetches unread alerts on load), user dropdown (profile + sign out) |
+| `Navbar.tsx` | Top navigation bar (sticky, cream, 2px ink bottom border). Contains: logo tile + wordmark, yellow-pill nav links, a **theme toggle**, an **assistant entry button** (visual only — not yet wired to a panel), **session countdown timer** (decoded from JWT `exp`), **alert bell** (fetches unread alerts on load), avatar dropdown (profile + sign out) |
 | `ui/Modal.tsx` | Base modal wrapper — centered overlay, click-outside-to-close, escape key support |
 | `ui/LargeModal.tsx` | Same as Modal but `max-w-4xl` for complex forms (e.g. budget setup) |
 | `ui/ConfirmModal.tsx` | Delete confirmation dialog with Cancel + Confirm (red) buttons |
@@ -440,14 +453,13 @@ Defines all routes. Every route except `/login` and `/register` is wrapped in `<
 
 | File | Purpose |
 |---|---|
-| `Dashboard.tsx` | Page component. Fetches `getDashboardData(month)` when month changes. Passes data to sub-components |
-| `components/MonthFilter.tsx` | Prev/Next month buttons + display. Stateless — parent owns the month string |
-| `components/KPICards.tsx` | 3 metric cards: Total Spent, Daily Average, Projected Monthly (with % change vs last month) |
+| `Dashboard.tsx` | Page component. Reads/writes the month via `useMonth()` (shared context, not local state). Fetches `getDashboardData(month)` when month changes. Renders the mint hero (total spend + delta pill) inline, then passes data to sub-components |
+| `components/KPICards.tsx` | 2 metric cards: Daily Average, Projected Monthly — total spend + % change moved into the page's own hero card |
 | `components/SpendingTrendChart.tsx` | AreaChart — cumulative daily spend for the selected month |
 | `components/TopSpendCategoriesChart.tsx` | Donut PieChart — top 5 spending categories. Clicking a slice navigates to `/expenses` filtered by that category. Download button exports as PNG via html2canvas |
 | `components/RecentTransactionsTable.tsx` | Last 5 transactions with icon, description, category, date, amount |
-| `components/BudgetGaugeChart.tsx` | Progress bars showing spend vs budget per category |
-| `components/SpendingPacing.tsx` | Visual pacing indicator (are you on track for your budget this month?) |
+
+`components/BudgetGaugeChart.tsx` and `components/SpendingPacing.tsx` exist in this directory but are dead code — not imported by `Dashboard.tsx` or anywhere else.
 
 ---
 
@@ -467,15 +479,14 @@ Defines all routes. Every route except `/login` and `/register` is wrapped in `<
 
 | File | Purpose |
 |---|---|
-| `Budgets.tsx` | Page component. Fetches budget plan for current month. Decides between empty state and monitoring view |
-| `components/BudgetMonthFilter.tsx` | Month selector specific to budgets page |
-| `components/SmartEmptyState.tsx` | Shown when no budget exists. Displays AI-suggested amounts based on last 3 months of spend |
+| `Budgets.tsx` | Page component. Reads/writes the month via the shared `useMonth()` context (renders `<MonthControl />`, not a page-local filter). Fetches budget plan for current month. Decides between empty state and monitoring view |
+| `components/SmartEmptyState.tsx` | Shown when no budget exists. Displays suggested amounts based on last 3 months of spend |
 | `components/SetupModal.tsx` | Large modal for bulk category budget allocation. Has a total target with auto-distribute and lock/unlock |
-| `components/MonitoringView.tsx` | Current month budget progress per category |
+| `components/MonitoringView.tsx` | Current month budget progress per category, incl. the Money Remaining card (coral + compacted/exact/over-% treatment when negative) |
 | `components/CategoryBudgetCard.tsx` | Individual category budget input row |
 | `components/TotalBudgetCard.tsx` | Summary card showing total budget vs total allocated |
-| `components/BudgetsKPICards.tsx` | KPI cards at top of budgets page |
-| `components/AddCategoryModal.tsx` | Quick-add a new category from within the budget setup flow |
+
+`components/BudgetsKPICards.tsx` and `components/AddCategoryModal.tsx` exist in this directory but are dead code — not imported by `Budgets.tsx` or anywhere else. (`components/BudgetMonthFilter.tsx` — the old page-local month selector — has been deleted; superseded by the shared `MonthControl`.)
 
 ---
 
@@ -483,14 +494,25 @@ Defines all routes. Every route except `/login` and `/register` is wrapped in `<
 
 | File | Purpose |
 |---|---|
-| `Analytics.tsx` | Page component. Owns `timePeriod`, `viewMode` (trend/month), `includeCapitalTransfers` state |
-| `components/AnalyticsHeader.tsx` | Time period selector (3m, 6m, 1y, all, or specific month), view toggle, capital transfers toggle, KPI display |
+| `Analytics.tsx` | Page component. Owns `timePeriod`, `viewMode` (trend/month), `includeCapitalTransfers` state. In `viewMode === 'month'`, `timePeriod` is kept in sync with the shared `useMonth()` context and the header renders `<MonthControl />`; `viewMode === 'trend'` keeps its own independent range selector. Renders a static Wrapped teaser card (not yet wired to the actual Wrapped overlay) |
+| `components/AnalyticsHeader.tsx` | Time period selector (3m, 6m, 1y, all, or specific month via the shared month control), view toggle, capital transfers toggle, KPI display |
 | `components/SpendingVelocityChart.tsx` | Line chart — current month vs previous month vs historical average (day-by-day) |
 | `components/HabitIdentifierChart.tsx` | Bar chart — transaction count and average spend by category |
 | `components/CategoryDistribution.tsx` | Pie/bar chart — percentage breakdown of spend by category |
 | `components/MonthlyBreakdownChart.tsx` | Bar chart — month-by-month total spending |
 | `components/CategorySpending.tsx` | Transaction heatmap — colour-coded daily spend calendar |
 | `components/BudgetVsSpendChart.tsx` | Budget limit vs actual spend per category |
+
+---
+
+### `src/Merchants/Merchants.tsx` — Merchant Mapping
+
+Single file (no subcomponents folder, like Profile). Three things on one page:
+- **Bulk-suggestion banner**: one card per cluster from `GET /merchants/clusters` (transactions with no merchant at all yet, grouped by shared UPI handle) — raw description sample, an editable clean-name input pre-filled with a guess derived from the handle, a category picker, and "Apply to N": creates the merchant (`POST /merchants`) then links every transaction in the cluster to it (`PUT /transactions/{id}` per id).
+- **Search + list of existing merchants**: `GET /merchants?q=`, inline rename/recategorise (`PUT /merchants/{id}`) and delete (`DELETE /merchants/{id}`).
+- **"N unmapped" badge + "Rescan backlog" button**: `GET /merchants/unmapped-count` and `POST /merchants/rescan` — sweeps the existing backlog against merchants that already exist (exact handle auto-applies, fuzzy raises a `new_merchant` alert instead of showing up here).
+
+The Navbar's notification dropdown renders `new_merchant` alerts the same visual way as `new_category` ones; accept composes `PUT /transactions/{id}` + `PUT /alerts/{id}/acknowledge` (no dedicated "accept" endpoint).
 
 ---
 
@@ -546,7 +568,7 @@ AnalyticsData    { velocity, habit_identifier, category_distribution, monthly_br
 | File | Exports |
 |---|---|
 | `formatter.ts` | `formatCurrency(amount)` → `₹1,234.56`; `formatDate(dateStr)` → `15 Jan 2025` |
-| `iconHelper.tsx` | `getCategoryIcon(iconName)` returns the correct lucide icon component with an HSL colour based on the icon name. Registry of 33 icons mapped to names like `utensils`, `car`, `shopping-bag` |
+| `iconHelper.tsx` | `getCategoryIcon(categoryName, iconName)` returns the correct lucide icon component in a bordered, pastel-tinted circle (ink icon/border on a light tint — never white-on-saturated, so contrast holds in both themes). Registry of 33 icons mapped to names like `utensils`, `car`, `shopping-bag` |
 
 ---
 
@@ -699,10 +721,12 @@ updated_at    DateTime       server default = now(), auto-updates
 Column                Type           Constraints
 ─────────────────────────────────────────────────
 id                    Integer        PK
-type                  String         "budget" or "new_category", default "budget"
+type                  String         "budget", "new_category", or "new_merchant"; default "budget"
 goal_id               Integer        FK → goals.id, CASCADE DELETE, nullable
 threshold_percentage  Numeric(5,2)   nullable (75.00, 90.00, 100.00)
-context               JSON           flexible data payload (e.g. category name for new_category alerts)
+context               JSON           flexible data payload -- category name for new_category; transaction id/
+                                     description snippet/suggested merchant+category/match reason/similarity
+                                     score for new_merchant (see merchant_matching_service.py)
 triggered_at          DateTime       nullable
 is_acknowledged       Boolean        default False
 user_id               Integer        FK → users.id, CASCADE DELETE, indexed
@@ -785,12 +809,17 @@ All endpoints are prefixed with `/api/v1`. All endpoints except auth require `Au
 
 ### Merchants
 
-| Method | Path | Body | Response |
+| Method | Path | Body / Params | Response |
 |---|---|---|---|
-| GET | `/merchants` | — | `MerchantOut[]` |
+| GET | `/merchants` | `q?` (case-insensitive name search) | `MerchantOut[]` |
 | POST | `/merchants` | `{ name, category_id? }` | `MerchantOut` |
-| PUT | `/merchants/{id}` | `MerchantUpdate` | `MerchantOut` |
+| PUT | `/merchants/{id}` | `MerchantUpdate` | `MerchantOut` — renaming/recategorising never touches transactions already linked to the merchant, only affects future matches |
 | DELETE | `/merchants/{id}` | — | `{ message }` |
+| GET | `/merchants/unmapped-count` | — | `{ count }` — transactions with `merchant_id IS NULL`; backs the notification-bell badge and the Merchants page's "N unmapped" indicator |
+| GET | `/merchants/clusters` | — | `MerchantClusterOut[]` — groups *currently-unmapped* transactions (no merchant at all) by shared UPI handle, for the cold-start bulk-naming banner |
+| POST | `/merchants/rescan` | — | `{ auto_applied, suggested }` — sweeps unmapped transactions against existing merchants using the same algorithm as upload time (exact UPI-handle match auto-applies; fuzzy match raises a `new_merchant` alert instead) |
+
+Matching (`app/services/merchant_matching_service.py`) is 100% local -- no LLM calls anywhere in this feature, since raw transaction descriptions are financial PII and a rescan sweeps the whole backlog unreviewed. Exact `name@bank` VPA handle match is high-confidence and auto-applies; otherwise RapidFuzz similarity against the merchant's known description strings (threshold calibrated against real production data) is medium-confidence and only raises a suggestion. The old hardcoded `MERCHANT_CATEGORY_RULES` dict in `upload_service.py` was retired via `alembic/versions/0003_seed_merchants_from_rules.py`, which both seeded real `Merchant` rows and backfilled matching pre-existing unmapped transactions so the new fingerprint-based matcher starts with real history to compare against.
 
 ### Goals (Monthly Budget Limits)
 
@@ -922,10 +951,16 @@ Step 2 — Fuzzy match against existing categories
   → Match found: use that category
   → No match: continue
 
-Step 3 — Merchant rules
-  If transaction has a known merchant, use merchant's default category
-  → Match found: use that category
-  → No match: continue
+Step 3 — Merchant matching (local only, no LLM -- see app/services/merchant_matching_service.py)
+  Exact UPI-handle match against an existing merchant's known handles
+  → Match: auto-apply that merchant + its category (high confidence)
+  → No handle match: fuzzy similarity against the merchant's known
+    description strings (RapidFuzz, threshold calibrated against real
+    production data)
+    → Above threshold: raise a 'new_merchant' suggestion alert instead of
+      auto-applying (medium confidence -- needs a human accept/dismiss);
+      category stays unset until then
+    → No match: continue
 
 Step 4 — Default
   Assign "Miscellaneous" category
@@ -1296,7 +1331,7 @@ venv\Scripts\activate
 pip install python-docx
 ```
 
-Then run the generator script (ask Claude to regenerate `generate_doc.py` based on the current `DOCUMENTATION.md` and execute it). This produces a styled Word document with coloured headings, tables, and code blocks.
+Then run the generator script (regenerate `generate_doc.py` based on the current `DOCUMENTATION.md` and execute it). This produces a styled Word document with coloured headings, tables, and code blocks.
 
 ---
 

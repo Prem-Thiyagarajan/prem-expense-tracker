@@ -7,8 +7,8 @@ import ExpenseFilters from "./components/ExpenseFilters";
 import TransactionsTable from "./components/TransactionsTable";
 import ConfirmModal from '../components/ui/ConfirmModal';
 import TransactionModal from './components/TransactionModal';
-import { getCategories, deleteTransaction, getTransactions, getAccounts, getTags } from '../api/apiClient';
-import type { Category, Transaction, Account, Tag } from '../types'; // Adjusted path if needed
+import { getCategories, deleteTransaction, getTransactions, getAccounts, getTags, getMerchants } from '../api/apiClient';
+import type { Category, Transaction, Account, Tag, Merchant } from '../types'; // Adjusted path if needed
 import toast from 'react-hot-toast';
 
 const Expenses: React.FC = () => {
@@ -31,6 +31,7 @@ const Expenses: React.FC = () => {
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [allAccounts, setAllAccounts] = useState<Account[]>([]);
   const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [allMerchants, setAllMerchants] = useState<Merchant[]>([]);
   
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null);
@@ -67,11 +68,12 @@ const Expenses: React.FC = () => {
   }, [currentPage, fetchTrigger]);
 
   useEffect(() => {
-    Promise.all([getCategories(), getAccounts(), getTags()])
-      .then(([cats, accs, tags]) => { 
-        setAllCategories(cats); 
+    Promise.all([getCategories(), getAccounts(), getTags(), getMerchants()])
+      .then(([cats, accs, tags, merchants]) => {
+        setAllCategories(cats);
         setAllAccounts(accs);
         setAllTags(tags);
+        setAllMerchants(merchants);
       })
       .catch(() => setError("Failed to load filter options."));
 
@@ -175,6 +177,7 @@ const Expenses: React.FC = () => {
         categories={allCategories}
         accounts={allAccounts}
         allTags={allTags}
+        merchants={allMerchants}
       />
       <ConfirmModal
         isOpen={isConfirmOpen}
