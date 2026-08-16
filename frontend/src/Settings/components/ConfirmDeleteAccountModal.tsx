@@ -34,16 +34,16 @@ const ConfirmDeleteAccountModal: React.FC<ConfirmDeleteAccountModalProps> = ({ i
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Delete Your Account">
       <div className="space-y-4">
-        <div className="flex items-center p-4 bg-red-50 text-red-700 rounded-lg">
-          <ShieldAlert className="w-10 h-10 mr-3 flex-shrink-0" />
+        <div className="flex items-center gap-3 p-4 border-2 border-dashed border-semantic-red rounded-card">
+          <ShieldAlert className="w-9 h-9 text-semantic-red shrink-0" />
           <div>
-            <h3 className="font-bold">This action is permanent and cannot be undone.</h3>
-            <p className="text-sm">All of your data, including transactions, budgets, and categories, will be permanently erased.</p>
+            <h3 className="font-heading font-bold text-sm text-semantic-red">This action is permanent and cannot be undone.</h3>
+            <p className="font-body text-xs text-muted mt-1">All of your data, including transactions, budgets, and categories, will be permanently erased.</p>
           </div>
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="confirmPassword" className="block font-body font-semibold text-[10px] uppercase tracking-[0.14em] text-muted mb-1.5">
             Please enter your password to confirm.
           </label>
           <input
@@ -51,20 +51,20 @@ const ConfirmDeleteAccountModal: React.FC<ConfirmDeleteAccountModalProps> = ({ i
             id="confirmPassword"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+            className="w-full bg-bg border-1.5 border-line rounded-[12px] px-3.5 py-2.5 font-body text-sm text-ink outline-none focus:ring-2 focus:ring-link/40"
           />
-          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+          {error && <p className="font-body text-xs text-semantic-red mt-1">{error}</p>}
         </div>
 
-        <div className="flex justify-end space-x-3 pt-4">
-          <button onClick={handleClose} className="px-4 py-2 bg-gray-200 text-gray-800 font-semibold rounded-md hover:bg-gray-300">
+        <div className="flex justify-end gap-2.5 pt-4">
+          <button onClick={handleClose} className="px-4 py-2 rounded-full border-1.5 border-line font-body font-semibold text-sm hover:bg-hair transition-colors">
             Cancel
           </button>
-          <button 
-            onClick={handleConfirm} 
-            className="px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700"
+          <button
+            onClick={handleConfirm}
+            className="px-4 py-2 rounded-full border-2 border-candyLine bg-candy-coral text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
           >
-            Confirm & Delete Account
+            Confirm &amp; Delete Account
           </button>
         </div>
       </div>

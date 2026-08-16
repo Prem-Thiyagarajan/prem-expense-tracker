@@ -42,3 +42,5 @@ backend/.pytest_cache/
 
 # mcp json ignore
 *.mcp.json
+WEB_REDESIGN_BRIEF.md
+handoff/

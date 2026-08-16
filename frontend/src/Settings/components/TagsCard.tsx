@@ -1,7 +1,7 @@
 // File: src/Settings/components/TagsCard.tsx
 
 import React from 'react';
-import { Pencil, Trash2, PlusCircle } from "lucide-react";
+import { Pencil, X, Plus } from "lucide-react";
 import type { Tag } from '../../types';
 
 interface TagsCardProps {
@@ -13,34 +13,38 @@ interface TagsCardProps {
 
 const TagsCard: React.FC<TagsCardProps> = ({ tags = [], onAdd, onEdit, onDelete }) => {
   return (
-    <div className="bg-white rounded-xl shadow-md p-4 flex flex-col h-80">
-      <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Tags</h2>
-          <button onClick={onAdd} className="flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-800">
-            <PlusCircle size={16} /> Add New
+    <div className="bg-card border-2 border-line rounded-cardLg p-5 flex flex-col h-80">
+      <div className="flex justify-between items-center border-b-2 border-line pb-3">
+          <h2 className="font-heading font-extrabold text-base text-ink">Tags</h2>
+          <button
+            onClick={onAdd}
+            className="flex items-center gap-1 bg-candy-lilac border-1.5 border-candyLine rounded-full px-3.5 py-1.5 font-heading font-bold text-[11.5px] text-[#1E1B16] shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+          >
+            <Plus size={13} strokeWidth={3} /> Add
           </button>
       </div>
-      {/* ✅ --- ADDED SCROLLBAR CONTAINER --- */}
-      <div className="flex-1 overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+      <div className="flex-1 overflow-y-auto pr-1">
         {tags.length > 0 ? (
-          tags.map((tag) => (
-            <div
-              key={tag.id}
-              className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg"
-            >
-              <span className="text-sm font-medium">{tag.name}</span>
-              <div className="flex items-center space-x-2">
-                <button onClick={() => onEdit(tag)} className="p-1 text-gray-500 hover:text-blue-600">
-                  <Pencil size={16} />
-                </button>
-                <button onClick={() => onDelete(tag.id)} className="p-1 text-gray-500 hover:text-red-600">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))
+          <div className="flex flex-wrap gap-2 mt-3.5">
+            {tags.map((tag) => (
+              <span
+                key={tag.id}
+                className="inline-flex items-center gap-2 bg-hair border-1.5 border-line rounded-chip pl-3.5 pr-2 py-2 font-heading font-bold text-xs text-ink"
+              >
+                {tag.name}
+                <span className="flex items-center gap-0.5">
+                  <button onClick={() => onEdit(tag)} className="p-0.5 text-muted hover:text-link">
+                    <Pencil size={12} />
+                  </button>
+                  <button onClick={() => onDelete(tag.id)} className="p-0.5 text-muted hover:text-semantic-red">
+                    <X size={13} />
+                  </button>
+                </span>
+              </span>
+            ))}
+          </div>
         ) : (
-          <p className="text-center text-gray-500 mt-4">No tags found. Add one to get started!</p>
+          <p className="text-center font-body text-sm text-muted mt-8">No tags found. Add one to get started!</p>
         )}
       </div>
     </div>

@@ -74,32 +74,32 @@ const CategoryModal: React.FC<CategoryModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title={categoryToEdit ? "Edit Category" : "Add New Category"}>
       <div className="space-y-4">
         <div>
-          <label htmlFor="categoryName" className="block text-sm font-medium text-gray-700">Category Name</label>
+          <label htmlFor="categoryName" className="block font-body font-semibold text-[10px] uppercase tracking-[0.14em] text-muted mb-1.5">Category Name</label>
           <input
             type="text"
             id="categoryName"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+            className="w-full bg-bg border-1.5 border-line rounded-[12px] px-3.5 py-2.5 font-body text-sm text-ink outline-none focus:ring-2 focus:ring-link/40"
           />
         </div>
-        
-        <IconPicker 
-          selectedValue={selectedIcon} 
-          onIconSelect={setSelectedIcon} 
-          availableIcons={availableIcons} 
+
+        <IconPicker
+          selectedValue={selectedIcon}
+          onIconSelect={setSelectedIcon}
+          availableIcons={availableIcons}
         />
 
-        {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+        {error && <p className="font-body text-sm text-semantic-red mt-2">{error}</p>}
 
-        <div className="flex justify-end space-x-3 pt-4">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+        <div className="flex justify-end gap-2.5 pt-4">
+          <button onClick={onClose} className="px-4 py-2 rounded-full border-1.5 border-line font-body font-semibold text-sm hover:bg-hair transition-colors">
             Cancel
           </button>
-          <button 
-            onClick={handleSave} 
-            disabled={isSaving} 
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-2 rounded-full border-2 border-candyLine bg-candy-mint text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50 disabled:pointer-events-none"
           >
             {isSaving ? 'Saving...' : (categoryToEdit ? 'Update Category' : 'Create Category')}
           </button>

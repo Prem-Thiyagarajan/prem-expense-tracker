@@ -1,3 +1,5 @@
+// File: src/Budgets/components/AddCategoryModal.tsx
+
 import React, { useState } from 'react';
 import { createCategory } from '../../api/apiClient'; // We'll use this API function
 import Modal from '../../components/ui/Modal'; // Import our generic modal
@@ -22,10 +24,10 @@ const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onClose, on
     try {
       setIsSaving(true);
       setError(null);
-      
+
       // The is_income flag is false by default for expense tracking
       await createCategory({ name: categoryName, is_income: false });
-      
+
       onCategoryAdded(); // Tell the Budgets page to refresh
       onClose(); // Close the modal on success
       setCategoryName(''); // Reset the input field
@@ -42,7 +44,7 @@ const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onClose, on
     <Modal isOpen={isOpen} onClose={onClose} title="Add New Category">
       <div className="space-y-4">
         <div>
-          <label htmlFor="categoryName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="categoryName" className="block font-body font-semibold text-xs uppercase tracking-[0.08em] text-muted mb-1.5">
             Category Name
           </label>
           <input
@@ -50,24 +52,24 @@ const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onClose, on
             id="categoryName"
             value={categoryName}
             onChange={(e) => setCategoryName(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="block w-full px-3 py-2.5 border-1.5 border-line rounded-chip font-body text-sm text-ink bg-card focus:outline-none focus:border-candy-blue"
             placeholder="e.g., Pet Expenses"
           />
         </div>
 
-        {error && <p className="text-xs text-red-500">{error}</p>}
+        {error && <p className="font-body text-xs text-semantic-red">{error}</p>}
 
-        <div className="flex justify-end space-x-2">
-          <button 
-            onClick={onClose} 
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+        <div className="flex justify-end gap-2.5">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-full border-1.5 border-line font-body font-semibold text-sm hover:bg-hair transition-colors"
           >
             Cancel
           </button>
-          <button 
-            onClick={handleSave} 
+          <button
+            onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+            className="px-4 py-2 rounded-chip border-2 border-line bg-ink text-bg font-heading font-bold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-chip"
           >
             {isSaving ? 'Saving...' : 'Save Category'}
           </button>

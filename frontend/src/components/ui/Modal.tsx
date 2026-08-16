@@ -17,34 +17,25 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
   }
 
   return (
-    // Backdrop: a semi-transparent overlay that covers the whole screen.
-    // Clicking it will close the modal.
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-60 z-40 flex items-center justify-center p-4"
+    // Backdrop: 45% ink scrim (handoff/README.md §Overlays). Clicking it closes the modal.
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center p-4"
+      style={{ background: "var(--scrim)" }}
       onClick={onClose}
     >
-      {/* 
-        Modal Content Container: the white box.
-        e.stopPropagation() prevents a click inside the modal from bubbling up to the backdrop and closing it.
-      */}
-      <div 
-        className="bg-white rounded-lg shadow-xl w-full max-w-md"
+      {/* e.stopPropagation() prevents a click inside the modal from bubbling up to the backdrop and closing it. */}
+      <div
+        className="bg-card border-2 border-line rounded-sheet shadow-sheet w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Header */}
-        <div className="flex justify-between items-center border-b p-4">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X size={24} />
+        <div className="flex justify-between items-center border-b-2 border-line p-4">
+          <h3 className="font-heading font-bold text-lg text-ink">{title}</h3>
+          <button onClick={onClose} className="text-muted hover:text-ink">
+            <X size={22} />
           </button>
         </div>
-        
-        {/* 
-          ✅ --- THIS IS THE UPDATED PART ---
-          Modal Body: A simple container with padding.
-          All scrolling logic (`overflow-y-auto`, `max-h-[80vh]`, `flex-col`) has been removed.
-        */}
-        <div className="p-6">
+
+        <div className="p-6 text-ink">
           {children}
         </div>
       </div>

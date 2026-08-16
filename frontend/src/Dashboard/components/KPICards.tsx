@@ -1,18 +1,15 @@
 // File: src/Dashboard/components/KPICards.tsx
 
 import React from 'react';
-// Import a few more icons for visual variety
-import { ArrowUp, CalendarDays, BarChartBig } from 'lucide-react';
+import { CalendarDays, TrendingUp } from 'lucide-react';
 
-// Define the new shape of the props this component expects
+// The hero card (Dashboard.tsx) now owns total spend + delta; this row is
+// just the two supporting KPIs per handoff/README.md §1 Dashboard.
 interface KPICardsProps {
-  totalSpent: number;
   dailyAverage: number;
   projectedSpend: number;
-  percentChange: number;
 }
 
-// Helper to format numbers with commas and currency symbol
 const formatCurrency = (value: number) => (
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -22,45 +19,28 @@ const formatCurrency = (value: number) => (
   }).format(value)
 );
 
-const KPICards: React.FC<KPICardsProps> = ({ totalSpent, dailyAverage, projectedSpend, percentChange }) => {
+const KPICards: React.FC<KPICardsProps> = ({ dailyAverage, projectedSpend }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      
-      {/* Total Spent Card (with % change) */}
-      <div className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-[18px]">
+      <div className="bg-card border-2 border-line rounded-cardLg p-5 flex justify-between items-center">
         <div>
-          <p className="text-sm font-semibold text-gray-500">Total Spent (This Month)</p>
-          <p className="text-3xl font-bold text-gray-800 mt-1">{formatCurrency(totalSpent)}</p>
-          <p className={`text-xs mt-1 font-semibold ${percentChange >= 0 ? 'text-red-500' : 'text-green-500'}`}>
-            {percentChange >= 0 ? '▲' : '▼'} {Math.abs(percentChange).toFixed(1)}% From Last Month
-          </p>
+          <p className="font-body font-semibold text-[9.5px] uppercase tracking-[0.14em] text-muted">Daily Average</p>
+          <p className="font-money text-[28px] leading-none tracking-[-0.02em] mt-2">{formatCurrency(dailyAverage)}</p>
+          <p className="text-xs font-body text-faint mt-1.5">Your current burn rate.</p>
         </div>
-        <div className={`p-2 rounded-lg ${percentChange >= 0 ? 'bg-red-100 text-red-500' : 'bg-green-100 text-green-500'}`}>
-          <ArrowUp size={20} />
+        <div className="w-10 h-10 rounded-chip border-1.5 border-line flex items-center justify-center shrink-0">
+          <CalendarDays size={18} />
         </div>
       </div>
 
-      {/* Daily Average Spend Card */}
-      <div className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
+      <div className="bg-candy-pink border-2 border-candyLine rounded-cardLg shadow-card p-5 flex justify-between items-center text-[#1E1B16]">
         <div>
-          <p className="text-sm font-semibold text-gray-500">Daily Average</p>
-          <p className="text-3xl font-bold text-gray-800 mt-1">{formatCurrency(dailyAverage)}</p>
-          <p className="text-xs text-gray-400 mt-1">Your current burn rate.</p>
+          <p className="font-body font-semibold text-[9.5px] uppercase tracking-[0.14em]">Projected Spend</p>
+          <p className="font-money text-[28px] leading-none tracking-[-0.02em] mt-2">{formatCurrency(projectedSpend)}</p>
+          <p className="text-xs font-body opacity-70 mt-1.5">Forecast based on current pace.</p>
         </div>
-         <div className="bg-yellow-100 p-2 rounded-lg text-yellow-500">
-          <CalendarDays size={20} />
-        </div>
-      </div>
-
-      {/* Projected Monthly Spend Card */}
-      <div className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
-        <div>
-          <p className="text-sm font-semibold text-gray-500">Projected Spend</p>
-          <p className="text-3xl font-bold text-blue-600 mt-1">{formatCurrency(projectedSpend)}</p>
-          <p className="text-xs text-gray-400 mt-1">Forecast based on current pace.</p>
-        </div>
-        <div className="bg-blue-100 p-2 rounded-lg text-blue-500">
-          <BarChartBig size={20} />
+        <div className="w-10 h-10 rounded-chip border-1.5 border-line bg-card flex items-center justify-center shrink-0">
+          <TrendingUp size={18} />
         </div>
       </div>
     </div>

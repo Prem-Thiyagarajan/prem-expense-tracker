@@ -1,6 +1,4 @@
-// File: src/auth/PasswordStrength.tsx
 import React from 'react';
-import { CheckCircle2, XCircle } from 'lucide-react';
 
 interface ValidationCriteria {
   length: boolean;
@@ -15,10 +13,14 @@ interface Props {
 }
 
 const Requirement: React.FC<{ text: string; met: boolean }> = ({ text, met }) => (
-    <div className={`flex items-center text-xs transition-colors ${met ? 'text-green-600' : 'text-gray-500'}`}>
-        {met ? <CheckCircle2 size={14} className="mr-2" /> : <XCircle size={14} className="mr-2" />}
-        {text}
-    </div>
+    <span
+        className={[
+            "inline-flex items-center rounded-full border-1.5 border-line px-3 py-1.5 font-body font-bold text-[11px] text-[#1E1B16] whitespace-nowrap transition-colors duration-chip",
+            met ? "bg-candy-mint" : "bg-hair",
+        ].join(" ")}
+    >
+        {met ? '✓ ' : '○ '}{text}
+    </span>
 );
 
 const PasswordStrength: React.FC<Props> = ({ password = '' }) => {
@@ -31,12 +33,12 @@ const PasswordStrength: React.FC<Props> = ({ password = '' }) => {
     };
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 mt-2">
-            <Requirement text="At least 8 characters" met={criteria.length} />
-            <Requirement text="At least one uppercase letter" met={criteria.uppercase} />
-            <Requirement text="At least one lowercase letter" met={criteria.lowercase} />
-            <Requirement text="At least one number" met={criteria.number} />
-            <Requirement text="At least one special character" met={criteria.specialChar} />
+        <div className="flex flex-wrap gap-2 mt-2">
+            <Requirement text="8+ characters" met={criteria.length} />
+            <Requirement text="Uppercase letter" met={criteria.uppercase} />
+            <Requirement text="Lowercase letter" met={criteria.lowercase} />
+            <Requirement text="Number" met={criteria.number} />
+            <Requirement text="Special character" met={criteria.specialChar} />
         </div>
     );
 };

@@ -7,7 +7,7 @@ import { formatCurrency } from '../../utils/formatter';
 
 interface Props {
   data: TransactionHeatmapPoint[];
-  timePeriod: string; 
+  timePeriod: string;
 }
 
 const TransactionHeatmap: React.FC<Props> = ({ data = [], timePeriod }) => {
@@ -27,6 +27,8 @@ const TransactionHeatmap: React.FC<Props> = ({ data = [], timePeriod }) => {
     const numDays = endDate.getDate();
     const startDayOfWeek = startDate.getDay();
 
+    const todayStr = new Date().toISOString().slice(0, 10);
+
     const calendarDays = [];
     for (let i = 0; i < startDayOfWeek; i++) {
         calendarDays.push({ key: `empty-${i}`, isEmpty: true });
@@ -44,42 +46,64 @@ const TransactionHeatmap: React.FC<Props> = ({ data = [], timePeriod }) => {
     }
 
     const maxSpend = data.length > 0 ? Math.max(...data.map(d => d.spend)) : 0;
-    const getColor = (spend: number) => {
-        if (spend <= 0) return 'bg-gray-100 hover:bg-gray-200';
-        const intensity = Math.min(spend / (maxSpend * 0.75), 1);
-        if (intensity < 0.2) return 'bg-blue-100 hover:bg-blue-200';
-        if (intensity < 0.4) return 'bg-blue-200 hover:bg-blue-300';
-        if (intensity < 0.6) return 'bg-blue-300 hover:bg-blue-400';
-        if (intensity < 0.8) return 'bg-blue-400 hover:bg-blue-500';
-        return 'bg-blue-500 hover:bg-blue-600';
+
+    // Ramp chart.heat1 -> heat2 -> heat3, today = coral, future = transparent
+    // + dashed border -- handoff/README.md §Candy accents / §Chart rules.
+    const getCellStyle = (dateStr: string, spend: number) => {
+        const isFuture = dateStr > todayStr;
+        const isToday = dateStr === todayStr;
+
+        if (isFuture) {
+            return { bg: 'bg-transparent', border: 'border-[1.5px] border-dashed border-line', text: 'text-faint' };
+        }
+        if (isToday) {
+            return { bg: 'bg-candy-coral', border: 'border border-candyLine', text: 'text-[#1E1B16]' };
+        }
+        if (spend <= 0) {
+            return { bg: 'bg-hair', border: 'border border-line', text: 'text-muted' };
+        }
+        const intensity = maxSpend > 0 ? spend / maxSpend : 0;
+        if (intensity < 0.34) return { bg: 'bg-chart-heat1', border: 'border border-line', text: 'text-[#1E1B16]' };
+        if (intensity < 0.67) return { bg: 'bg-chart-heat2', border: 'border border-line', text: 'text-[#1E1B16]' };
+        return { bg: 'bg-chart-heat3', border: 'border border-line', text: 'text-[#1E1B16]' };
     };
-    
+
     const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     return (
-        <div className="bg-white p-4 rounded-xl shadow-sm h-80 flex flex-col">
-            <h3 className="font-semibold text-gray-800 mb-2">Spending Calendar</h3>
-            <div className="grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-500">
+        <div className="bg-card border-2 border-line rounded-cardLg p-5 h-full flex flex-col">
+            <div className="flex justify-between items-baseline border-b-2 border-line pb-3">
+                <h3 className="font-heading font-bold text-base">Spending Calendar</h3>
+                <div className="flex items-center gap-1.5 font-body font-semibold text-[10px] uppercase tracking-[0.1em] text-muted">
+                    Low
+                    <span className="flex gap-1">
+                        <span className="w-[13px] h-[13px] rounded-[4px] bg-chart-heat1 border border-line" />
+                        <span className="w-[13px] h-[13px] rounded-[4px] bg-chart-heat2 border border-line" />
+                        <span className="w-[13px] h-[13px] rounded-[4px] bg-chart-heat3 border border-line" />
+                    </span>
+                    High
+                </div>
+            </div>
+            <div className="grid grid-cols-7 gap-1.5 text-center font-body font-semibold text-[9.5px] uppercase tracking-[0.12em] text-muted mt-3">
                 {weekDays.map(day => <div key={day}>{day}</div>)}
             </div>
-            <div className="grid grid-cols-7 gap-1 flex-grow mt-1">
+            <div className="grid grid-cols-7 gap-1.5 flex-grow mt-2">
                 {calendarDays.map(dayInfo => {
                     if (dayInfo.isEmpty) {
-                        return <div key={dayInfo.key} className="rounded-md" />;
+                        return <div key={dayInfo.key} />;
                     }
                     const spendAmount = dayInfo.spend || 0;
-                    const color = getColor(spendAmount);
-                    const textColor = spendAmount > maxSpend * 0.6 ? 'text-white' : 'text-gray-700';
+                    const style = getCellStyle(dayInfo.date as string, spendAmount);
 
                     return (
                         // ✅ 4. Use a <button> and attach the onClick handler
-                        <button 
+                        <button
                             key={dayInfo.key}
-                            className={`p-1 rounded-md flex items-center justify-center transition-colors duration-150 w-full h-full text-left focus:outline-none focus:ring-2 focus:ring-blue-500 ${color}`}
+                            className={`rounded-[11px] flex items-center justify-center transition-colors duration-row w-full h-full focus:outline-none focus:ring-2 focus:ring-candy-blue ${style.bg} ${style.border}`}
                             title={`Spent: ${formatCurrency(spendAmount)}`}
                             onClick={() => handleDayClick(dayInfo.date as string)}
                         >
-                            <span className={`font-semibold text-sm ${textColor}`}>{dayInfo.day}</span>
+                            <span className={`font-body font-semibold text-sm ${style.text}`}>{dayInfo.day}</span>
                         </button>
                     );
                 })}

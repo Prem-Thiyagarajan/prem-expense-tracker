@@ -1,8 +1,7 @@
 // File: src/Expenses/components/TransactionModal.tsx
 
-import React, { useState, useEffect } from 'react';
-import Select from 'react-select';
-import Modal from '../../components/ui/Modal';
+import React, { useState, useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 import { createTransaction, updateTransaction } from '../../api/apiClient';
 import type { Transaction, Category, Account, Tag } from '../../types';
 import toast from 'react-hot-toast';
@@ -17,6 +16,26 @@ interface Props {
   allTags: Tag[];
 }
 
+// Category colours per handoff/README.md §Category colours + icons — mirrors
+// Dashboard/components/TopSpendCategoriesChart.tsx's CATEGORY_COLORS map.
+const CATEGORY_COLORS: { [key: string]: string } = {
+  'Food': '#FF8787', 'Bills': '#5C7CFA', 'Travel': '#FFD43B', 'Shopping': '#C7F0DB',
+  'Transfers': '#C7F0DB', 'Health & Wellness': '#C7F0DB', 'Healthcare': '#C7F0DB',
+  'Personal Care': '#FFD6E8', 'Education': '#D0BFFF', 'Entertainment': '#D0BFFF',
+  'House Work': '#E8E2D4', 'Miscellaneous': '#E8E2D4', 'Rent': '#5C7CFA',
+  'Transportation': '#FFD43B', 'Services': '#D0BFFF', 'default': '#E8E2D4',
+};
+const getCategoryColor = (name?: string | null): string => (name && CATEGORY_COLORS[name]) || CATEGORY_COLORS.default;
+
+const toDateInputValue = (d: Date): string => {
+  const copy = new Date(d);
+  copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset());
+  return copy.toISOString().split('T')[0];
+};
+
+const chipBtn = "px-3 py-1.5 rounded-full border border-line font-heading font-bold text-[11px] whitespace-nowrap transition-all duration-chip";
+const fieldLabel = "block font-body font-semibold text-[9.5px] uppercase tracking-[0.14em] text-muted mt-3.5 mb-1.5";
+
 const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactionToEdit, categories, accounts, allTags }) => {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
@@ -25,10 +44,11 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
   const [accountId, setAccountId] = useState<number | ''>('');
   const [type, setType] = useState<'debit' | 'credit'>('debit');
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isEditMode = !!transactionToEdit;
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -43,9 +63,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
       } else {
         setDescription('');
         setAmount('');
-        const today = new Date();
-        today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-        setTxnDate(today.toISOString().split('T')[0]);
+        setTxnDate(toDateInputValue(new Date()));
         setCategoryId('');
         setAccountId(accounts[0]?.id || '');
         setType('debit');
@@ -54,8 +72,20 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
       setError(null);
     }
   }, [transactionToEdit, isOpen, isEditMode, accounts]);
-  
-  const tagOptions = allTags.map(tag => ({ value: tag.id, label: tag.name }));
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const toggleTag = (id: number) => {
+    setSelectedTagIds(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
+  };
+
+  const todayValue = toDateInputValue(new Date());
+  const yesterdayValue = toDateInputValue(new Date(Date.now() - 86400000));
+  const isToday = txnDate === todayValue;
+  const isYesterday = txnDate === yesterdayValue;
+  const isCredit = type === 'credit';
 
   const handleSave = async () => {
     if (!description || amount === '' || !txnDate || !accountId) { setError('Please fill out all required fields.'); return; }
@@ -63,7 +93,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
     try {
       setIsSaving(true);
       setError(null);
-      
+
       const payload = {
         description,
         amount: Number(amount),
@@ -94,64 +124,166 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? "Edit Transaction" : "Add New Transaction"}>
-      <div className="space-y-4">
-        <div>
-          <label className="text-sm font-medium">Description</label>
-          <input value={description} onChange={e => setDescription(e.target.value)} className="mt-1 w-full border rounded p-2" />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium">Amount (₹)</label>
-            <input type="number" value={amount} onChange={e => setAmount(e.target.value === '' ? '' : parseFloat(e.target.value))} className="mt-1 w-full border rounded p-2" />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Type</label>
-            <select value={type} onChange={e => setType(e.target.value as 'debit' | 'credit')} className="mt-1 w-full border rounded p-2 bg-white">
-              <option value="debit">Expense (Debit)</option>
-              <option value="credit">Income (Credit)</option>
-            </select>
-          </div>
-        </div>
-        <div>
-            <label className="text-sm font-medium">Date</label>
-            <input type="date" value={txnDate} onChange={e => setTxnDate(e.target.value)} className="mt-1 w-full border rounded p-2" />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-            <div>
-                <label className="text-sm font-medium">Category</label>
-                <select value={categoryId} onChange={e => setCategoryId(e.target.value === '' ? '' : Number(e.target.value))} className="mt-1 w-full border rounded p-2 bg-white">
-                    <option value="">Uncategorized</option>
-                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                </select>
+    // Backdrop: 45% ink scrim, matches Modal.tsx's convention.
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center p-4"
+      style={{ background: "var(--scrim)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-[700px] bg-bg border-2 border-line rounded-sheet shadow-sheet p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center flex-wrap gap-3">
+          <span className="font-heading font-extrabold text-xl">{isEditMode ? "Edit transaction" : "Add transaction"}</span>
+          <div className="flex items-center gap-2.5">
+            <div className="flex border border-line rounded-full overflow-hidden">
+              {(['debit', 'credit'] as const).map(t => {
+                const active = type === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setType(t)}
+                    className="px-4 py-1.5 font-heading font-bold text-xs text-ink transition-colors"
+                    style={{ background: active ? (t === 'debit' ? '#FF8787' : '#C7F0DB') : 'transparent' }}
+                  >
+                    {t === 'debit' ? 'Spend' : 'Income'}
+                  </button>
+                );
+              })}
             </div>
-            <div>
-                <label className="text-sm font-medium">Account</label>
-                <select value={accountId} onChange={e => setAccountId(Number(e.target.value))} className="mt-1 w-full border rounded p-2 bg-white">
-                    {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-                </select>
-            </div>
+            <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-chip border border-line bg-hair flex items-center justify-center hover:bg-candy-pink hover:border-candyLine transition-colors">
+              <X size={16} />
+            </button>
+          </div>
         </div>
-        <div>
-            <label className="text-sm font-medium">Tags</label>
-            <Select
-                isMulti
-                options={tagOptions}
-                value={tagOptions.filter(option => selectedTagIds.includes(option.value))}
-                onChange={(selectedOptions) => { setSelectedTagIds(selectedOptions.map(option => option.value)); }}
-                className="mt-1"
-                classNamePrefix="select"
+
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1.35fr] gap-6 mt-4 items-start">
+          {/* Left column */}
+          <div>
+            <p className="font-money text-[40px] leading-none tracking-[-0.03em]">
+              ₹{amount === '' ? 0 : amount}
+            </p>
+
+            <label className={fieldLabel}>Amount</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={e => setAmount(e.target.value === '' ? '' : parseFloat(e.target.value))}
+              placeholder="0"
+              className="w-full bg-card border border-line rounded-chip px-3.5 py-2.5 font-money text-[17px] tracking-[-0.02em] text-ink outline-none"
             />
+
+            <label className={fieldLabel}>Account</label>
+            <div className="flex flex-wrap gap-1.5">
+              {accounts.map(acc => {
+                const active = accountId === acc.id;
+                return (
+                  <button
+                    key={acc.id}
+                    type="button"
+                    onClick={() => setAccountId(acc.id)}
+                    className={[chipBtn, active ? "bg-candy-blue text-white shadow-chip" : "bg-card text-ink"].join(" ")}
+                  >
+                    {acc.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <label className={fieldLabel}>Date</label>
+            <div className="flex flex-wrap gap-1.5">
+              <button type="button" onClick={() => setTxnDate(todayValue)} className={[chipBtn, isToday ? "bg-candy-yellow text-[#1E1B16] shadow-chip" : "bg-card text-ink"].join(" ")}>Today</button>
+              <button type="button" onClick={() => setTxnDate(yesterdayValue)} className={[chipBtn, isYesterday ? "bg-candy-yellow text-[#1E1B16] shadow-chip" : "bg-card text-ink"].join(" ")}>Yesterday</button>
+              <button
+                type="button"
+                onClick={() => {
+                  try { dateInputRef.current?.showPicker(); } catch { dateInputRef.current?.focus(); }
+                }}
+                className={[chipBtn, (!isToday && !isYesterday) ? "bg-candy-yellow text-[#1E1B16] shadow-chip" : "bg-card text-ink"].join(" ")}
+              >
+                📅 Pick a date
+              </button>
+            </div>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={txnDate}
+              onChange={e => setTxnDate(e.target.value)}
+              className="w-full mt-2 bg-card border border-line rounded-chip px-3.5 py-2 font-body font-semibold text-xs text-ink outline-none"
+            />
+          </div>
+
+          {/* Right column */}
+          <div>
+            <label className="block font-body font-semibold text-[9.5px] uppercase tracking-[0.14em] text-muted mb-1.5">Category</label>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCategoryId('')}
+                className={[chipBtn, categoryId === '' ? "bg-candy-yellow text-[#1E1B16] shadow-chip" : "bg-card text-ink"].join(" ")}
+              >
+                Uncategorized
+              </button>
+              {categories.map(cat => {
+                const active = categoryId === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setCategoryId(cat.id)}
+                    className={[chipBtn, active ? "text-[#1E1B16] shadow-chip" : "bg-card text-ink"].join(" ")}
+                    style={active ? { background: getCategoryColor(cat.name) } : undefined}
+                  >
+                    {cat.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <label className={fieldLabel}>Note</label>
+            <input
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="What was it for?"
+              className="w-full bg-card border border-line rounded-chip px-3.5 py-2.5 font-body font-medium text-xs text-ink outline-none"
+            />
+
+            <label className={fieldLabel}>Tags</label>
+            <div className="flex flex-wrap gap-1.5">
+              {allTags.map(tag => {
+                const active = selectedTagIds.includes(tag.id);
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => toggleTag(tag.id)}
+                    className={[chipBtn, active ? "bg-candy-lilac text-[#1E1B16] shadow-chip" : "bg-card text-ink"].join(" ")}
+                  >
+                    {active ? '✓ ' : ''}#{tag.name}
+                  </button>
+                );
+              })}
+              {allTags.length === 0 && (
+                <span className="font-body text-xs text-faint">No tags yet — add some from Settings.</span>
+              )}
+            </div>
+          </div>
         </div>
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        <div className="flex justify-end space-x-2 pt-4">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded-md">Cancel</button>
-          <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-md">
-            {isSaving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
+
+        {error && <p className="font-body text-sm text-semantic-red mt-4">{error}</p>}
+
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="w-full mt-5 border-2 border-line rounded-card shadow-card py-3.5 font-heading font-extrabold text-sm disabled:opacity-60 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+          style={{ background: isCredit ? '#C7F0DB' : '#5C7CFA', color: isCredit ? '#1E1B16' : '#fff' }}
+        >
+          {isSaving ? 'Saving…' : isCredit ? 'Save income' : 'Save transaction'}
+        </button>
       </div>
-    </Modal>
+    </div>
   );
 };
 

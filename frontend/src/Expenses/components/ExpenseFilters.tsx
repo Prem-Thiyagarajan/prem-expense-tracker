@@ -22,59 +22,110 @@ interface ExpenseFiltersProps {
   setType: (value: string) => void;
 }
 
-const ExpenseFilters: React.FC<ExpenseFiltersProps> = ({ 
+// Matches the prototype's typeChips: All / Spend / Income, uniform blue when active.
+const TYPE_CHIPS: { value: string; label: string }[] = [
+  { value: '', label: 'All' },
+  { value: 'debit', label: 'Spend' },
+  { value: 'credit', label: 'Income' },
+];
+
+const fieldLabel = "font-body font-semibold text-[9.5px] uppercase tracking-[0.14em] text-muted mb-1.5 block";
+const fieldInput = "bg-bg border border-line rounded-chip px-3 py-2.5 font-body font-semibold text-xs text-ink outline-none";
+const chipBtn = "px-3.5 py-1.5 rounded-full border border-line font-heading font-bold text-[11.5px] whitespace-nowrap transition-all duration-chip";
+
+const ExpenseFilters: React.FC<ExpenseFiltersProps> = ({
     onApplyFilters, onResetFilters, // Use the new reset prop
     allCategories, allAccounts,
     startDate, setStartDate, endDate, setEndDate,
     accountId, setAccountId, categoryId, setCategoryId,
     searchTerm, setSearchTerm, type, setType
 }) => {
-  // The component is now fully controlled by the parent.
+  // The component is still fully controlled by the parent.
   // The handlers just call the functions passed in as props.
 
   return (
-    <div className="bg-white border rounded-xl p-4 space-y-4 shadow-sm">
-      <h2 className="font-bold text-lg">Filters</h2>
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-        <div className="md:col-span-2">
-          <label className="text-sm font-medium text-gray-700">Date From</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full mt-1 border rounded-md px-2 py-1.5 text-sm" />
+    <div className="bg-card border-2 border-line rounded-cardLg p-5">
+      <div className="flex flex-wrap items-end gap-3.5">
+        <div>
+          <label className={fieldLabel}>From</label>
+          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={fieldInput} />
         </div>
-        <div className="md:col-span-2">
-          <label className="text-sm font-medium text-gray-700">Date To</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full mt-1 border rounded-md px-2 py-1.5 text-sm" />
+        <div>
+          <label className={fieldLabel}>To</label>
+          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={fieldInput} />
         </div>
-        <div className="md:col-span-2">
-          <label className="text-sm font-medium text-gray-700">Account</label>
-          <select value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full mt-1 border rounded-md px-2 py-1.5 text-sm bg-white">
-            <option value="">All Accounts</option>
+        <div>
+          <label className={fieldLabel}>Account</label>
+          <select value={accountId} onChange={e => setAccountId(e.target.value)} className={`${fieldInput} cursor-pointer`}>
+            <option value="">All accounts</option>
             {allAccounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
           </select>
         </div>
-        <div className="md:col-span-2">
-          <label className="text-sm font-medium text-gray-700">Category</label>
-          <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="w-full mt-1 border rounded-md px-2 py-1.5 text-sm bg-white">
-            <option value="">All Categories</option>
-            {allCategories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-          </select>
-        </div>
-        <div className="md:col-span-1">
-          <label className="text-sm font-medium text-gray-700">Type</label>
-          <select value={type} onChange={e => setType(e.target.value)} className="w-full mt-1 border rounded-md px-2 py-1.5 text-sm bg-white">
-            <option value="">All</option>
-            <option value="debit">Debit</option>
-            <option value="credit">Credit</option>
-          </select>
-        </div>
-        <div className="md:col-span-3">
-          <label className="text-sm font-medium text-gray-700">Search</label>
-          <div className="flex mt-1">
-            <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search..." className="border rounded-l-md px-2 py-1.5 w-full text-sm" />
-            {/* ✅ These buttons now correctly call their respective parent handlers */}
-            <button onClick={onResetFilters} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 rounded-r-md border-y border-r font-semibold">Reset</button>
-            <button onClick={onApplyFilters} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md ml-2 font-semibold">Apply</button>
+        <div>
+          <label className={fieldLabel}>Type</label>
+          <div className="flex gap-1.5">
+            {TYPE_CHIPS.map(chip => {
+              const active = type === chip.value;
+              return (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => setType(chip.value)}
+                  className={[chipBtn, active ? "bg-candy-blue text-white shadow-chip" : "bg-hair text-ink"].join(" ")}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
           </div>
         </div>
+        <div className="flex-1 min-w-[200px]">
+          <label className={fieldLabel}>Search</label>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Merchant, UPI ref, note…"
+            className="w-full bg-bg border border-line rounded-full px-4 py-2.5 font-body font-medium text-xs text-ink outline-none"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={onResetFilters}
+          className="px-4 py-2.5 rounded-full border border-line bg-hair font-heading font-bold text-xs text-ink hover:opacity-75 transition-opacity"
+        >
+          Reset
+        </button>
+        <button
+          type="button"
+          onClick={onApplyFilters}
+          className="px-5 py-2.5 rounded-full border border-candyLine bg-candy-yellow font-heading font-bold text-xs text-[#1E1B16] shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+        >
+          Apply
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mt-4 pt-3.5 border-t border-line">
+        <button
+          type="button"
+          onClick={() => setCategoryId('')}
+          className={[chipBtn, categoryId === '' ? "bg-candy-yellow text-[#1E1B16] shadow-chip" : "bg-hair text-ink"].join(" ")}
+        >
+          ⊞ All categories
+        </button>
+        {allCategories.map(cat => {
+          const active = categoryId === String(cat.id);
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setCategoryId(String(cat.id))}
+              className={[chipBtn, active ? "bg-candy-yellow text-[#1E1B16] shadow-chip" : "bg-hair text-ink"].join(" ")}
+            >
+              {cat.name}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

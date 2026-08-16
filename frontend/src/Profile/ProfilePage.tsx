@@ -2,12 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { getMyProfile, changePassword, setSecurityQuestion } from '../api/apiClient';
 import type { User } from '../types';
-import { UserCircle, Mail, KeyRound, Eye, EyeOff, ShieldQuestion } from 'lucide-react';
+import { KeyRound, Eye, EyeOff, ShieldQuestion } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PasswordStrength from '../auth/PasswordStrength';
 
 const isPasswordStrong = (p: string) =>
     p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[\W_]/.test(p);
+
+const inputClass = "w-full bg-bg border border-line rounded-chip px-3.5 py-3 font-body text-sm text-ink placeholder:text-faint outline-none focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-ink transition-colors";
+const microLabel = "font-body font-semibold text-[9.5px] uppercase tracking-[0.14em] text-muted mb-1.5 block";
+const eyeButtonClass = "absolute inset-y-0 right-0 flex items-center px-3.5 text-muted hover:text-ink focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-ink rounded-r-chip transition-colors";
+const primaryButtonClass = "px-6 py-3 rounded-chip border-2 border-line font-heading font-extrabold text-sm text-[#1E1B16] shadow-card hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-ink transition-all duration-press disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap";
 
 const ProfilePage: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -99,159 +104,180 @@ const ProfilePage: React.FC = () => {
         }
     };
 
-    if (isLoading) return <div className="p-8 text-center font-semibold">Loading Profile...</div>;
-    if (error) return <div className="p-8 text-center text-red-500 bg-red-50 rounded-lg">{error}</div>;
-    if (!user) return <div className="p-8 text-center">Could not find user data.</div>;
+    if (isLoading) return <div className="p-8 text-center font-body font-semibold text-ink">Loading Profile...</div>;
+    if (error) return <div className="m-6 p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-candyLine rounded-card">{error}</div>;
+    if (!user) return <div className="p-8 text-center font-body text-muted">Could not find user data.</div>;
 
     return (
-        <div className="p-4 md:p-8 max-w-2xl mx-auto space-y-6">
-            <header className="mb-2">
-                <h1 className="text-3xl font-bold text-gray-800">Your Profile</h1>
-                <p className="text-gray-500 mt-1">View your account details and manage your password.</p>
+        <div className="max-w-content mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+            <header>
+                <h1 className="font-heading text-3xl font-extrabold text-ink tracking-[-0.02em]">Your profile</h1>
+                <p className="font-body text-sm text-muted mt-1">Account details and security.</p>
             </header>
 
-            {/* Account Info */}
-            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-700 mb-4">Account Details</h2>
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-sm font-medium text-gray-600 flex items-center">
-                            <UserCircle size={16} className="mr-2" /> Username
-                        </label>
-                        <p className="mt-1 text-lg text-gray-800 font-semibold bg-gray-50 p-3 rounded-md">{user.username}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-[18px] items-start">
+                <div className="flex flex-col gap-[18px]">
+                    {/* Identity card */}
+                    <div className="bg-candy-pink border-2 border-candyLine rounded-cardLg shadow-card p-6 text-[#1E1B16]">
+                        <div className="flex items-center gap-4">
+                            <span className="w-[58px] h-[58px] rounded-full bg-white border-2 border-line flex items-center justify-center font-heading font-extrabold text-xl shrink-0">
+                                {user.username.charAt(0).toUpperCase()}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-heading font-extrabold text-xl truncate">{user.username}</p>
+                                <p className="font-mono text-xs mt-1 truncate">{user.email}</p>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label className="text-sm font-medium text-gray-600 flex items-center">
-                            <Mail size={16} className="mr-2" /> Email Address
-                        </label>
-                        <p className="mt-1 text-lg text-gray-800 font-semibold bg-gray-50 p-3 rounded-md">{user.email}</p>
+
+                    {/* Account Info */}
+                    <div className="bg-card border-2 border-line rounded-cardLg p-5">
+                        <h2 className="font-heading font-extrabold text-base text-ink border-b-2 border-line pb-3">Account details</h2>
+                        <div className="flex flex-col gap-3.5 mt-4">
+                            <div>
+                                <span className={microLabel}>Username</span>
+                                <p className="bg-hair border border-line rounded-chip px-3.5 py-3 font-heading font-bold text-sm text-ink">{user.username}</p>
+                            </div>
+                            <div>
+                                <span className={microLabel}>Email address</span>
+                                <p className="bg-hair border border-line rounded-chip px-3.5 py-3 font-mono text-xs text-ink">{user.email}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Change Password */}
-            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <KeyRound size={18} /> Change Password
-                </h2>
-                <form onSubmit={handleChangePassword} className="space-y-4">
-                    <div>
-                        <label className="text-sm font-semibold">Current Password</label>
-                        <div className="relative">
-                            <input
-                                type={showOld ? 'text' : 'password'}
-                                value={oldPassword}
-                                onChange={e => setOldPassword(e.target.value)}
-                                placeholder="Enter your current password"
-                                className="w-full p-3 mt-1 border rounded-lg pr-10"
-                                required
-                            />
-                            <button type="button" onClick={() => setShowOld(!showOld)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700">
-                                {showOld ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-sm font-semibold">New Password</label>
-                        <div className="relative">
-                            <input
-                                type={showNew ? 'text' : 'password'}
-                                value={newPassword}
-                                onChange={e => setNewPassword(e.target.value)}
-                                placeholder="Create a new strong password"
-                                className="w-full p-3 mt-1 border rounded-lg pr-10"
-                                required
-                            />
-                            <button type="button" onClick={() => setShowNew(!showNew)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700">
-                                {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                        </div>
-                        <PasswordStrength password={newPassword} />
-                    </div>
-                    <div>
-                        <label className="text-sm font-semibold">Confirm New Password</label>
-                        <div className="relative">
-                            <input
-                                type={showConfirm ? 'text' : 'password'}
-                                value={confirmNew}
-                                onChange={e => setConfirmNew(e.target.value)}
-                                placeholder="Repeat your new password"
-                                className={`w-full p-3 mt-1 border rounded-lg pr-10 ${confirmNew && newPassword !== confirmNew ? 'border-red-500' : ''}`}
-                                required
-                            />
-                            <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700">
-                                {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                        </div>
-                        {confirmNew && newPassword !== confirmNew && (
-                            <p className="text-xs text-red-500 mt-1">Passwords do not match.</p>
-                        )}
-                    </div>
-                    <button
-                        type="submit"
-                        disabled={isSaving}
-                        className="px-6 py-2.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-semibold"
-                    >
-                        {isSaving ? 'Saving...' : 'Update Password'}
-                    </button>
-                </form>
-            </div>
+                <div className="flex flex-col gap-[18px]">
+                    {/* Change Password */}
+                    <div className="bg-card border-2 border-line rounded-cardLg p-5">
+                        <h2 className="font-heading font-extrabold text-base text-ink border-b-2 border-line pb-3 flex items-center gap-2">
+                            <KeyRound size={17} /> Change password
+                        </h2>
+                        <form onSubmit={handleChangePassword} className="mt-4 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div>
+                                    <label className={microLabel}>Current password</label>
+                                    <div className="relative">
+                                        <input
+                                            type={showOld ? 'text' : 'password'}
+                                            value={oldPassword}
+                                            onChange={e => setOldPassword(e.target.value)}
+                                            placeholder="Enter current password"
+                                            className={`${inputClass} pr-11`}
+                                            required
+                                        />
+                                        <button type="button" onClick={() => setShowOld(!showOld)} className={eyeButtonClass} aria-label="Toggle current password visibility">
+                                            {showOld ? <EyeOff size={17} /> : <Eye size={17} />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className={microLabel}>New password</label>
+                                    <div className="relative">
+                                        <input
+                                            type={showNew ? 'text' : 'password'}
+                                            value={newPassword}
+                                            onChange={e => setNewPassword(e.target.value)}
+                                            placeholder="Create a strong one"
+                                            className={`${inputClass} pr-11`}
+                                            required
+                                        />
+                                        <button type="button" onClick={() => setShowNew(!showNew)} className={eyeButtonClass} aria-label="Toggle new password visibility">
+                                            {showNew ? <EyeOff size={17} /> : <Eye size={17} />}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
-            {/* Security Question (password recovery) */}
-            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-700 mb-1 flex items-center gap-2">
-                    <ShieldQuestion size={18} /> Security Question
-                </h2>
-                <p className="text-sm text-gray-500 mb-4">
-                    {user.has_security_question
-                        ? 'A security question is set. You can update it below. This lets you reset your password if you forget it.'
-                        : 'Set a security question so you can reset your password without email if you forget it.'}
-                </p>
-                <form onSubmit={handleSetSecurityQuestion} className="space-y-4">
-                    <div>
-                        <label className="text-sm font-semibold">Question</label>
-                        <select
-                            value={sqQuestion}
-                            onChange={e => setSqQuestion(e.target.value)}
-                            className="w-full p-3 mt-1 border rounded-lg bg-white"
-                        >
-                            {SECURITY_QUESTIONS.map(q => <option key={q} value={q}>{q}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-sm font-semibold">Answer</label>
-                        <input
-                            type="text"
-                            value={sqAnswer}
-                            onChange={e => setSqAnswer(e.target.value)}
-                            placeholder="Your answer (case-insensitive)"
-                            className="w-full p-3 mt-1 border rounded-lg"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="text-sm font-semibold">Current Password</label>
-                        <input
-                            type="password"
-                            value={sqPassword}
-                            onChange={e => setSqPassword(e.target.value)}
-                            placeholder="Confirm with your current password"
-                            className="w-full p-3 mt-1 border rounded-lg"
-                            required
-                        />
-                    </div>
-                    <button
-                        type="submit"
-                        disabled={isSavingSQ}
-                        className="px-6 py-2.5 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-semibold"
-                    >
-                        {isSavingSQ ? 'Saving...' : (user.has_security_question ? 'Update Security Question' : 'Save Security Question')}
-                    </button>
-                </form>
-            </div>
+                            <PasswordStrength password={newPassword} />
 
-            <div className="text-center text-sm text-gray-500">
-                <p>To delete your account, please go to the Settings page.</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3.5 sm:items-end">
+                                <div>
+                                    <label className={microLabel}>Confirm new password</label>
+                                    <div className="relative">
+                                        <input
+                                            type={showConfirm ? 'text' : 'password'}
+                                            value={confirmNew}
+                                            onChange={e => setConfirmNew(e.target.value)}
+                                            placeholder="Repeat new password"
+                                            className={`${inputClass} pr-11 ${confirmNew && newPassword !== confirmNew ? 'border-semantic-red' : ''}`}
+                                            required
+                                        />
+                                        <button type="button" onClick={() => setShowConfirm(!showConfirm)} className={eyeButtonClass} aria-label="Toggle confirm password visibility">
+                                            {showConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
+                                        </button>
+                                    </div>
+                                    {confirmNew && newPassword !== confirmNew && (
+                                        <p className="text-xs font-body text-semantic-red mt-1.5">Passwords do not match.</p>
+                                    )}
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isSaving}
+                                    className={`${primaryButtonClass} bg-candy-blue`}
+                                >
+                                    {isSaving ? 'Saving...' : 'Update password'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {/* Security Question (password recovery) */}
+                    <div className="bg-card border-2 border-line rounded-cardLg p-5">
+                        <h2 className="font-heading font-extrabold text-base text-ink border-b-2 border-line pb-3 flex items-center gap-2">
+                            <ShieldQuestion size={17} /> Security question
+                        </h2>
+                        <p className="text-sm font-body text-muted mt-3 leading-relaxed">
+                            {user.has_security_question
+                                ? 'A security question is set. You can update it below. This lets you reset your password if you forget it.'
+                                : 'Set a security question so you can reset your password without email if you forget it.'}
+                        </p>
+                        <form onSubmit={handleSetSecurityQuestion} className="mt-4 space-y-3.5">
+                            <div>
+                                <label className={microLabel}>Question</label>
+                                <select
+                                    value={sqQuestion}
+                                    onChange={e => setSqQuestion(e.target.value)}
+                                    className={`${inputClass} cursor-pointer`}
+                                >
+                                    {SECURITY_QUESTIONS.map(q => <option key={q} value={q}>{q}</option>)}
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div>
+                                    <label className={microLabel}>Answer</label>
+                                    <input
+                                        type="text"
+                                        value={sqAnswer}
+                                        onChange={e => setSqAnswer(e.target.value)}
+                                        placeholder="Case-insensitive"
+                                        className={inputClass}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className={microLabel}>Current password</label>
+                                    <input
+                                        type="password"
+                                        value={sqPassword}
+                                        onChange={e => setSqPassword(e.target.value)}
+                                        placeholder="Confirm it's you"
+                                        className={inputClass}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isSavingSQ}
+                                className={`${primaryButtonClass} bg-candy-coral`}
+                            >
+                                {isSavingSQ ? 'Saving...' : (user.has_security_question ? 'Update security question' : 'Save security question')}
+                            </button>
+                        </form>
+                    </div>
+
+                    <p className="text-center text-xs font-body text-muted">To delete your account, please go to the Settings page.</p>
+                </div>
             </div>
         </div>
     );

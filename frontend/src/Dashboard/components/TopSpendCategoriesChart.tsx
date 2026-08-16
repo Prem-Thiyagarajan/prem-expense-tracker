@@ -1,28 +1,29 @@
 // File: src/Dashboard/components/TopSpendCategoriesChart.tsx
 
-import React, { useRef } from 'react'; // ✅ 1. Import useRef
+import React, { useRef } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { Download } from 'lucide-react';
 import type { TopCategory } from '../../types';
-import html2canvas from 'html2canvas'; // ✅ 2. Import html2canvas
+import html2canvas from 'html2canvas';
 
 interface TopSpendCategoriesChartProps {
   data: TopCategory[];
   currentMonth: string;
 }
 
+// Category colours per handoff/README.md §Category colours + icons.
 const CATEGORY_COLORS: { [key: string]: string } = {
-  'Food': '#10B981', 'Shopping': '#3B82F6', 'Travel': '#EF4444', 'Bills': '#64748B', 'Entertainment': '#8B5CF6',
-  'Transportation': '#F97316', 'Healthcare': '#EC4899', 'Miscellaneous': '#F59E0B', 'Services': '#14B8A6',
-  'Transfers': '#6366F1', 'default': '#A1A1AA',
+  'Food': '#FF8787', 'Bills': '#5C7CFA', 'Travel': '#FFD43B', 'Shopping': '#C7F0DB',
+  'Transfers': '#C7F0DB', 'Health & Wellness': '#C7F0DB', 'Healthcare': '#C7F0DB',
+  'Personal Care': '#FFD6E8', 'Education': '#D0BFFF', 'Entertainment': '#D0BFFF',
+  'House Work': '#E8E2D4', 'Miscellaneous': '#E8E2D4', 'Rent': '#5C7CFA',
+  'Transportation': '#FFD43B', 'Services': '#D0BFFF', 'default': '#E8E2D4',
 };
 
 const generateHslColorForId = (id: number): string => {
   const hue = (id * 37) % 360;
-  const saturation = 75;
-  const lightness = 45;
-  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  return `hsl(${hue}, 70%, 82%)`;
 };
 
 const getCategoryColor = (category: TopCategory): string => {
@@ -35,10 +36,10 @@ const getCategoryColor = (category: TopCategory): string => {
 const CustomLegend = (props: any) => {
   const { payload } = props;
   return (
-    <ul className="flex flex-wrap items-center justify-center gap-x-4 text-xs text-gray-600 mt-2">
+    <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs font-body font-medium mt-2">
       {payload.map((entry: any, index: number) => (
-        <li key={`item-${index}`} className="flex items-center">
-          <span className="w-2.5 h-2.5 rounded-full mr-1.5" style={{ backgroundColor: entry.color }} />
+        <li key={`item-${index}`} className="flex items-center gap-1.5">
+          <span className="w-[13px] h-[13px] rounded-[4px] border-1.5 border-line shrink-0" style={{ backgroundColor: entry.color }} />
           <span>{entry.value}</span>
         </li>
       ))}
@@ -48,50 +49,41 @@ const CustomLegend = (props: any) => {
 
 const TopSpendCategoriesChart: React.FC<TopSpendCategoriesChartProps> = ({ data, currentMonth }) => {
   const navigate = useNavigate();
-  const chartRef = useRef<HTMLDivElement>(null); // ✅ 3. Create a ref for the chart container
+  const chartRef = useRef<HTMLDivElement>(null);
 
   const handlePieClick = (data: any) => {
     const { id: categoryId } = data.payload;
     if (categoryId) {
-        navigate('/expenses', { 
-            state: { 
+        navigate('/expenses', {
+            state: {
                 filterCategoryId: categoryId,
-                filterMonth: currentMonth 
-            } 
+                filterMonth: currentMonth
+            }
         });
     }
   };
 
-  // ✅ 4. Implement the download handler function
   const handleDownload = () => {
     if (chartRef.current) {
       html2canvas(chartRef.current, {
-        // Optional: Improve image quality on high-res screens
-        scale: 2, 
-        // Optional: Ensure the background is captured (useful if it's not white)
-        backgroundColor: '#ffffff', 
+        scale: 2,
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--color-card').trim() || '#ffffff',
       }).then(canvas => {
-        // Create a temporary link element
         const link = document.createElement('a');
-        // Set a dynamic filename based on the current month
         link.download = `top-spending-categories-${currentMonth}.png`;
-        // Set the link's href to the image data from the canvas
         link.href = canvas.toDataURL('image/png');
-        // Programmatically click the link to trigger the download
         link.click();
       });
     }
   };
 
   return (
-    // ✅ 5. Attach the ref to the main container div
-    <div ref={chartRef} className="w-full h-full p-4 bg-white rounded-lg shadow-md flex flex-col">
+    <div ref={chartRef} className="w-full h-full p-5 bg-card border-2 border-line rounded-cardLg flex flex-col">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-gray-800">Top Spending Categories</h3>
-        {/* ✅ 6. Connect the handler to the button's onClick event */}
-        <button 
-          onClick={handleDownload} 
-          className="text-gray-400 hover:text-gray-600 p-1"
+        <h3 className="font-heading font-bold text-base">Top Spending Categories</h3>
+        <button
+          onClick={handleDownload}
+          className="text-muted hover:text-ink p-1"
           aria-label="Download Chart"
         >
           <Download size={18} />
@@ -101,24 +93,27 @@ const TopSpendCategoriesChart: React.FC<TopSpendCategoriesChartProps> = ({ data,
       <div className="flex-grow w-full h-full">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie 
-              data={data} 
-              cx="50%" 
-              cy="50%" 
-              innerRadius="65%"
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius="62%"
               outerRadius="85%"
-              paddingAngle={5} 
-              dataKey="amount" 
+              paddingAngle={3}
+              dataKey="amount"
               nameKey="category"
               onClick={handlePieClick}
               className="cursor-pointer"
+              stroke="var(--color-ink)"
+              strokeWidth={2}
             >
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={getCategoryColor(entry)} />
               ))}
             </Pie>
-            <Tooltip 
-              formatter={(value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value)} 
+            <Tooltip
+              contentStyle={{ background: 'var(--color-card)', border: '2px solid var(--color-line)', borderRadius: 12, fontFamily: 'Archivo, sans-serif' }}
+              formatter={(value: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value)}
             />
             <Legend content={<CustomLegend />} verticalAlign="bottom" />
           </PieChart>

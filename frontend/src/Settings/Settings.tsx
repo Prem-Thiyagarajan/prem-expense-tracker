@@ -119,8 +119,8 @@ const Settings: React.FC = () => {
     }
   };
 
-  if (isLoading) return <div className="p-8 text-center font-semibold">Loading...</div>;
-  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
+  if (isLoading) return <div className="p-8 text-center font-body font-semibold text-ink">Loading...</div>;
+  if (error) return <div className="m-6 p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-candyLine rounded-card">{error}</div>;
 
   const usedIcons = new Set(categories.map(c => c.icon_name).filter((icon): icon is string => !!icon));
   if (categoryToEdit && categoryToEdit.icon_name) {
@@ -134,23 +134,34 @@ const Settings: React.FC = () => {
 
   return (
     <>
-      <div className="space-y-6 p-4 md:p-6 lg:p-8">
+      <div className="max-w-content mx-auto space-y-[18px] p-4 md:p-6 lg:p-8">
         <SettingsHeader />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-[18px] items-start">
           <CategorySettingsCard categories={categories} onAdd={handleAddNewCategory} onEdit={handleEditCategory} onDelete={handleDeleteCategory} />
-          <TagsCard tags={tags} onAdd={handleAddNewTag} onEdit={handleEditTag} onDelete={handleDeleteTag} />
-          <AccountsCard accounts={accounts} onAdd={handleAddNewAccount} onEdit={handleEditAccount} onDelete={handleDeleteAccount} />
-          <DataSyncCard />
+          <div className="flex flex-col gap-[18px]">
+            <TagsCard tags={tags} onAdd={handleAddNewTag} onEdit={handleEditTag} onDelete={handleDeleteTag} />
+            <AccountsCard accounts={accounts} onAdd={handleAddNewAccount} onEdit={handleEditAccount} onDelete={handleDeleteAccount} />
+          </div>
         </div>
-        <div className="mt-8 p-4 border-2 border-red-500 border-dashed rounded-lg">
-            <h3 className="text-lg font-bold text-red-600">Danger Zone</h3>
-            <p className="text-sm text-gray-600 mt-1">Permanently delete your account and all associated data.</p>
-            <button 
-                onClick={() => setIsConfirmDeleteAccountModalOpen(true)}
-                className="mt-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700"
-            >
-                Delete My Account
-            </button>
+
+        {/* NOTE(Part 2): a Subscriptions card (recurrence, next due date, mark
+            paid, edit/delete) slots in here as its own bg-card border-2
+            rounded-cardLg card — out of scope for this visual pass. */}
+
+        <DataSyncCard />
+
+        <div className="p-5 border-2 border-dashed border-semantic-red rounded-cardLg flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+          <div className="flex-1">
+            <h3 className="font-heading font-extrabold text-base text-semantic-red">Danger zone</h3>
+            <p className="font-body text-[12.5px] text-muted mt-1">Permanently delete your account and all associated data. This cannot be undone.</p>
+          </div>
+          <button
+              onClick={() => setIsConfirmDeleteAccountModalOpen(true)}
+              className="bg-candy-coral border-2 border-candyLine rounded-chip shadow-overlay px-5 py-3 font-heading font-extrabold text-[13px] text-[#1E1B16] shrink-0 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+          >
+              Delete My Account
+          </button>
         </div>
       </div>
 
