@@ -12,6 +12,8 @@ Intelligent Budgeting & Alerts: Create monthly budgets with ease. If you're star
 
 Secure & Multi-Tenant: Built from the ground up with security in mind. Features a complete JWT-based authentication system, and all data is strictly scoped to the logged-in user, ensuring your financial information remains private.
 
+Themeable by Design: A token-based design system (light/dark mode, persisted per device) drives every screen from one shared set of colors, type, radii, and shadows.
+
 ## Tech Stack & Deployment
 
 This application is deployed across a modern cloud infrastructure, ensuring scalability and performance.
