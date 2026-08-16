@@ -71,9 +71,13 @@ export interface Transaction {
   tag_ids?: number[]; 
 }
 
+// Keep in sync with backend/app/models/tag.py's EXCLUDABLE_SURFACES.
+export type TagExcludedPage = 'dashboard' | 'analytics' | 'budgets';
+
 export interface Tag {
   id: number;
   name: string;
+  excluded_pages: TagExcludedPage[];
 }
 
 export interface Account {
@@ -93,8 +97,14 @@ export interface Merchant {
 export interface MerchantCluster {
   handle: string | null;
   sample_description: string;
+  sample_descriptions: string[];
   transaction_ids: number[];
   count: number;
+  total_amount: number;
+  min_amount: number;
+  max_amount: number;
+  first_seen: string | null;
+  last_seen: string | null;
 }
 
 export interface RescanResult {
@@ -284,6 +294,7 @@ export interface Alert {
     category: {
       id: number;
       name: string;
+      icon_name?: string | null;
     }
   } | null;
 }

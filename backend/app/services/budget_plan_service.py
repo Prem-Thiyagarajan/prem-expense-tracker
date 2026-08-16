@@ -5,9 +5,8 @@ from app.models.transaction import Transaction
 from app.models.goal import Goal
 from app.models.category import Category
 from app.models.alert import Alert
-from app.models.tag import Tag
-from app.models.transaction_tag import TransactionTag
 from app.crud import goal_crud, alert_crud
+from app.crud.tag_crud import get_excluded_transaction_ids
 from app.schemas.budget_plan_schema import BudgetPlanUpdate
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
@@ -37,23 +36,19 @@ def get_budget_plan(db: Session, month: str, user_id: int):
     next_month_start = month_start + relativedelta(months=1)
     today = date.today()
 
-    # The "Exclude from Analytics" tag IS applied here (as of the web redesign) --
-    # previously budgets deliberately ignored it on the theory that a spend
-    # hidden from charts still consumed the category's limit. In practice this
-    # tag is used almost exclusively for capital transfers (moving money to
-    # another of your own accounts, one-off RTGS/NEFT settlements) -- not real
-    # spending against any category -- and letting a single ₹5L transfer blow a
-    # ₹40k budget out to "1,232% over" made Budgets actively misleading rather
-    # than conservative. Now consistent with dashboard/analytics.
+    # Which transactions to hide from budgets is per-tag configurable
+    # (Settings > Tags) -- a tag only affects budgets if "Budgets" is checked
+    # in its own excluded_pages. This is deliberately NOT the same set as
+    # dashboard/analytics: "Exclude from Analytics" defaults to hiding those
+    # two but still counting in budgets (a spend hidden from charts still
+    # consumed the category's limit), while a tag like "Capital Transfers"
+    # can be scoped to hide everywhere including budgets, since a one-off
+    # RTGS/NEFT transfer to your own other account isn't real category spend
+    # at all. See migration 0004 for the two tags' default scopes.
     # alert_service.get_total_spend_for_category_in_month applies the same
-    # filter, so budget progress and budget alerts always agree on one number.
-    exclude_tag = db.query(Tag).filter(Tag.name == "Exclude from Analytics", Tag.user_id == user_id).first()
-    transactions_to_exclude = []
-    if exclude_tag:
-        transactions_to_exclude = [
-            t.transaction_id for t in db.query(TransactionTag.transaction_id)
-            .filter(TransactionTag.tag_id == exclude_tag.id).all()
-        ]
+    # "budgets" surface, so budget progress and budget alerts always agree on
+    # one number.
+    transactions_to_exclude = get_excluded_transaction_ids(db, user_id, "budgets")
 
     existing_goals = db.query(Goal).filter(Goal.month == month, Goal.user_id == user_id).all()
 
