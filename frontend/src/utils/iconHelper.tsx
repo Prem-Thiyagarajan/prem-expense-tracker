@@ -1,84 +1,150 @@
 // File: src/utils/iconHelper.tsx
-
+//
+// Category icon resolution — kept in sync with PFT-Mobile/src/lib/categoryVisual.ts,
+// the other half of this pairing: the backend stores one lucide `icon_name` per
+// category (`utensils`, `leaf`, …); mobile renders each as an emoji + candy tint
+// (no icon font there), this file renders the *same* lucide icon component on a
+// matching candy-tinted badge. Same icon_name keys, same per-icon candy colour,
+// same keyword-fallback list and order — only the rendering technique differs.
+// Adding an icon: add one row to `iconRegistry` AND the mirrored row in
+// categoryVisual.ts's BY_ICON — never map one inline, and never let the two
+// registries' colour assignment drift apart.
 import React from 'react';
-// ✅ --- ADDING MANY NEW ICONS ---
-import { 
-    Utensils, ShoppingBag, Car, Ticket, Zap, Heart, Home, Plane, Building, 
-    Leaf, PawPrint, Package, HelpCircle, Briefcase, Gift, Landmark, 
-    PiggyBank, Dumbbell, Shapes, Receipt, GraduationCap, Pizza,
-    Train, Bus, Clapperboard, Shirt, Gamepad2, Pill, Ambulance,
-    University, Laptop, Phone, Sprout, Cat, Dog, Coffee
+import {
+    Utensils, Pizza, ShoppingBag, Shirt, Car, Train, Bus, Ticket, Clapperboard,
+    Gamepad2, Zap, Receipt, Heart, Pill, Ambulance, GraduationCap, University,
+    Home, Plane, Building, Leaf, Sprout, PawPrint, Cat, Dog, Briefcase, Laptop,
+    Phone, Gift, Dumbbell, Coffee, PiggyBank, Landmark, Shapes, Package,
+    Repeat, Shield, Droplet, Wifi, Music, BookOpen, Scissors, Sparkles, Scale,
+    HeartHandshake, Gem, Baby, Sofa, Wrench, Palette, Camera, Bike,
+    Stethoscope, Syringe, Wallet, CreditCard, Umbrella, Trophy, Cake,
+    TrendingUp, Tag,
 } from 'lucide-react';
 
-// --- The Massively Expanded Icon Map ---
-// Colours are pastel tints (never a saturated 500+ fill) so ink text/icons
-// stay >= 7:1 contrast on top -- handoff/README.md SS Accessibility: "ink on
-// cream is 14:1; candy cards carry ink text at >= 7:1 -- never white text on
-// candy." Each icon keeps its own distinct hue (33 categories need to stay
-// scannable at a glance); where a hue has a direct candy-token equivalent
-// that's used verbatim, otherwise a matching Tailwind 200-level pastel.
+// Candy accents, identical in both themes (tailwind.config.js `colors.candy`).
+// Every badge below uses one of these six -- never a one-off pastel -- so the
+// same category always looks the same regardless of which of the 33+29 icons
+// it happens to be using.
+const CANDY = {
+    coral: 'bg-candy-coral', blue: 'bg-candy-blue', yellow: 'bg-candy-yellow',
+    lilac: 'bg-candy-lilac', pink: 'bg-candy-pink', mint: 'bg-candy-mint',
+} as const;
+// Neutral badge fill for miscellaneous/unmatched categories -- matches
+// categoryVisual.ts's NEUTRAL constant exactly (also tailwind's category.misc).
+const NEUTRAL = 'bg-[#E8E2D4]';
+
 const iconRegistry: { [key: string]: { component: React.ReactElement, color: string } } = {
-    // --- Standard Categories ---
-    'utensils':     { component: <Utensils />,     color: 'bg-candy-coral' },  // Food
-    'pizza':        { component: <Pizza />,         color: 'bg-orange-200' },  // Food
-    'shopping-bag': { component: <ShoppingBag />,  color: 'bg-candy-blue' },   // Shopping
-    'shirt':        { component: <Shirt />,         color: 'bg-sky-200' },     // Shopping
-    'car':          { component: <Car />,          color: 'bg-candy-yellow' },// Transport
-    'train':        { component: <Train />,         color: 'bg-amber-200' },   // Transport
-    'bus':          { component: <Bus />,           color: 'bg-orange-200' },  // Transport
-    'ticket':       { component: <Ticket />,       color: 'bg-candy-lilac' }, // Entertainment
-    'clapperboard': { component: <Clapperboard />, color: 'bg-violet-200' },  // Entertainment
-    'gamepad-2':    { component: <Gamepad2 />,     color: 'bg-fuchsia-200' }, // Entertainment
-    'zap':          { component: <Zap />,          color: 'bg-rose-200' },    // Bills
-    'receipt':      { component: <Receipt />,      color: 'bg-red-200' },     // Bills
-    'heart':        { component: <Heart />,        color: 'bg-candy-pink' },  // Health
-    'pill':         { component: <Pill />,         color: 'bg-pink-200' },    // Health
-    'ambulance':    { component: <Ambulance />,    color: 'bg-red-200' },     // Health
-    'graduation-cap': { component: <GraduationCap />,color: 'bg-indigo-200' },// Education
-    'university':   { component: <University />,   color: 'bg-indigo-200' }, // Education
-    'home':         { component: <Home />,         color: 'bg-teal-200' },    // Rent
-    'plane':        { component: <Plane />,        color: 'bg-cyan-200' },    // Travel / Transfers
-    'building':     { component: <Building />,     color: 'bg-orange-200' },  // Services
-    'leaf':         { component: <Leaf />,         color: 'bg-candy-mint' },  // Groceries
-    'sprout':       { component: <Sprout />,       color: 'bg-green-200' },   // Groceries
-    'paw-print':    { component: <PawPrint />,     color: 'bg-amber-200' },   // Pets
-    'cat':          { component: <Cat />,           color: 'bg-stone-200' },   // Pets
-    'dog':          { component: <Dog />,           color: 'bg-yellow-200' },  // Pets
-    'briefcase':    { component: <Briefcase />,    color: 'bg-sky-200' },     // Salary / Work
-    'laptop':       { component: <Laptop />,       color: 'bg-hair' },        // Work / Tech
-    'phone':        { component: <Phone />,        color: 'bg-blue-200' },    // Communication
-    'gift':         { component: <Gift />,         color: 'bg-rose-200' },    // Gifts
-    'dumbbell':     { component: <Dumbbell />,     color: 'bg-red-200' },     // Personal Care / Gym
-    'coffee':       { component: <Coffee />,       color: 'bg-yellow-200' },  // Personal Care
-    'piggy-bank':   { component: <PiggyBank />,    color: 'bg-fuchsia-200' }, // Savings
-    'landmark':     { component: <Landmark />,     color: 'bg-emerald-200' }, // Investments
-    'shapes':       { component: <Shapes />,       color: 'bg-slate-200' },   // Miscellaneous
-    'package':      { component: <Package />,      color: 'bg-hair' },        // Miscellaneous
-    'default':      { component: <HelpCircle />,   color: 'bg-hair' },
+    utensils:         { component: <Utensils />,       color: CANDY.coral },
+    pizza:            { component: <Pizza />,           color: CANDY.coral },
+    'shopping-bag':   { component: <ShoppingBag />,     color: CANDY.blue },
+    shirt:            { component: <Shirt />,           color: CANDY.blue },
+    car:              { component: <Car />,             color: CANDY.yellow },
+    train:            { component: <Train />,           color: CANDY.yellow },
+    bus:              { component: <Bus />,             color: CANDY.yellow },
+    ticket:           { component: <Ticket />,          color: CANDY.lilac },
+    clapperboard:     { component: <Clapperboard />,    color: CANDY.lilac },
+    'gamepad-2':      { component: <Gamepad2 />,        color: CANDY.lilac },
+    zap:              { component: <Zap />,             color: CANDY.coral },
+    receipt:          { component: <Receipt />,         color: CANDY.coral },
+    heart:            { component: <Heart />,           color: CANDY.pink },
+    pill:             { component: <Pill />,            color: CANDY.pink },
+    ambulance:        { component: <Ambulance />,       color: CANDY.coral },
+    'graduation-cap': { component: <GraduationCap />,   color: CANDY.lilac },
+    university:       { component: <University />,      color: CANDY.lilac },
+    home:             { component: <Home />,            color: CANDY.mint },
+    plane:            { component: <Plane />,           color: CANDY.blue },
+    building:         { component: <Building />,        color: CANDY.yellow },
+    leaf:             { component: <Leaf />,            color: CANDY.mint },
+    sprout:           { component: <Sprout />,          color: CANDY.mint },
+    'paw-print':      { component: <PawPrint />,        color: CANDY.yellow },
+    cat:              { component: <Cat />,             color: CANDY.yellow },
+    dog:              { component: <Dog />,             color: CANDY.yellow },
+    briefcase:        { component: <Briefcase />,       color: CANDY.blue },
+    laptop:           { component: <Laptop />,          color: CANDY.blue },
+    phone:            { component: <Phone />,           color: CANDY.blue },
+    gift:             { component: <Gift />,            color: CANDY.pink },
+    dumbbell:         { component: <Dumbbell />,        color: CANDY.coral },
+    coffee:           { component: <Coffee />,          color: CANDY.yellow },
+    'piggy-bank':     { component: <PiggyBank />,       color: CANDY.pink },
+    landmark:         { component: <Landmark />,        color: CANDY.mint },
+    shapes:           { component: <Shapes />,          color: NEUTRAL },
+    package:          { component: <Package />,         color: NEUTRAL },
+
+    // Expanded set -- mirrors categoryVisual.ts's own "expanded" block 1:1.
+    repeat:           { component: <Repeat />,          color: CANDY.blue },
+    shield:           { component: <Shield />,          color: CANDY.mint },
+    droplet:          { component: <Droplet />,         color: CANDY.blue },
+    wifi:             { component: <Wifi />,            color: CANDY.blue },
+    music:            { component: <Music />,           color: CANDY.lilac },
+    'book-open':      { component: <BookOpen />,        color: CANDY.lilac },
+    scissors:         { component: <Scissors />,        color: CANDY.pink },
+    sparkles:         { component: <Sparkles />,        color: CANDY.pink },
+    scale:            { component: <Scale />,           color: CANDY.yellow },
+    'heart-handshake':{ component: <HeartHandshake />,  color: CANDY.mint },
+    gem:              { component: <Gem />,             color: CANDY.pink },
+    baby:             { component: <Baby />,            color: CANDY.pink },
+    sofa:             { component: <Sofa />,            color: CANDY.mint },
+    wrench:           { component: <Wrench />,          color: CANDY.yellow },
+    palette:          { component: <Palette />,         color: CANDY.lilac },
+    camera:           { component: <Camera />,          color: CANDY.lilac },
+    bike:             { component: <Bike />,            color: CANDY.yellow },
+    stethoscope:      { component: <Stethoscope />,     color: CANDY.coral },
+    syringe:          { component: <Syringe />,         color: CANDY.coral },
+    wallet:           { component: <Wallet />,          color: CANDY.blue },
+    'credit-card':    { component: <CreditCard />,      color: CANDY.blue },
+    umbrella:         { component: <Umbrella />,        color: CANDY.blue },
+    trophy:           { component: <Trophy />,          color: CANDY.yellow },
+    cake:             { component: <Cake />,            color: CANDY.pink },
+    'trending-up':    { component: <TrendingUp />,      color: CANDY.mint },
+
+    default:          { component: <Tag />,             color: NEUTRAL },
 };
 
-// This helper function renders the final icon component.
+// Keyword -> icon key, matched against the category name. First hit wins.
+// Mirrors categoryVisual.ts's BY_KEYWORD exactly, same order.
+const BY_KEYWORD: [string, string][] = [
+    ['salary', 'briefcase'], ['food', 'utensils'], ['grocer', 'leaf'], ['rent', 'home'],
+    ['travel', 'plane'], ['transfer', 'landmark'], ['bill', 'zap'], ['shop', 'shopping-bag'],
+    ['health', 'heart'], ['medic', 'pill'], ['education', 'graduation-cap'], ['entertain', 'ticket'],
+    ['invest', 'landmark'], ['saving', 'piggy-bank'], ['fuel', 'car'], ['transport', 'bus'],
+    ['subscription', 'repeat'], ['insurance', 'shield'], ['internet', 'wifi'], ['water', 'droplet'],
+    ['music', 'music'], ['book', 'book-open'], ['beauty', 'scissors'], ['salon', 'scissors'],
+    ['tax', 'scale'], ['legal', 'scale'], ['charity', 'heart-handshake'], ['donat', 'heart-handshake'],
+    ['wedding', 'gem'], ['jewel', 'gem'], ['child', 'baby'], ['kid', 'baby'],
+    ['furniture', 'sofa'], ['repair', 'wrench'], ['maintenance', 'wrench'], ['hobby', 'palette'],
+    ['photo', 'camera'], ['cycl', 'bike'], ['doctor', 'stethoscope'], ['clinic', 'stethoscope'],
+    ['vaccin', 'syringe'], ['loan', 'credit-card'], ['emi', 'credit-card'], ['stock', 'trending-up'],
+    ['crypto', 'trending-up'], ['party', 'cake'], ['celebrat', 'cake'], ['sport', 'trophy'],
+];
+
+// This helper function renders the final icon component. Every badge is a
+// candy fill now, so the border is always the fixed (non-theme-swapping)
+// candyLine ink -- a theme-aware border-line would nearly disappear against a
+// candy fill in dark mode (see tailwind.config.js's candyLine token comment).
 const renderIcon = (iconKey: string): React.ReactNode => {
     const iconData = iconRegistry[iconKey] || iconRegistry['default'];
     const iconProps = { size: 18, className: 'text-[#1E1B16]' };
     const iconComponent = React.cloneElement(iconData.component, iconProps);
     return (
-        <div className={`w-8 h-8 rounded-chip border-1.5 border-line flex items-center justify-center shrink-0 ${iconData.color}`}>
+        <div className={`w-8 h-8 rounded-chip border-1.5 border-candyLine flex items-center justify-center shrink-0 ${iconData.color}`}>
             {iconComponent}
         </div>
     );
 };
 
-// The main exported function (no change needed)
+// Resolves in three steps, matching categoryVisual.ts: exact icon_name ->
+// keyword match on the category name -> neutral fallback.
 export const getCategoryIcon = (categoryName?: string | null, iconName?: string | null): React.ReactNode => {
-    if (iconName && iconRegistry[iconName]) { return renderIcon(iconName); }
-    if (categoryName) {
-        const lowerCategory = categoryName.toLowerCase();
-        if (lowerCategory.includes('salary')) return renderIcon('briefcase');
-        // ... all other fallbacks remain the same ...
-        if (lowerCategory.includes('food')) return renderIcon('utensils');
-        if (lowerCategory.includes('groceries')) return renderIcon('leaf');
+    const icon = iconName?.trim().toLowerCase();
+    if (icon && iconRegistry[icon]) return renderIcon(icon);
+
+    const lowerName = categoryName?.trim().toLowerCase();
+    if (lowerName) {
+        for (const [keyword, iconKey] of BY_KEYWORD) {
+            if (lowerName.includes(keyword)) return renderIcon(iconKey);
+        }
     }
+
     return renderIcon('default');
 };
 
