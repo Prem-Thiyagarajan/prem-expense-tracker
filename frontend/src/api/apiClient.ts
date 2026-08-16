@@ -2,7 +2,7 @@
 
 import axios from 'axios';
 import toast from 'react-hot-toast'; // Import toast for the interceptor
-import type { DashboardData, BudgetPageData, Category, Transaction, Tag, Account, AnalyticsData, User, Alert } from '../types';
+import type { DashboardData, BudgetPageData, Category, Transaction, Tag, Account, AnalyticsData, User, Alert, Merchant, MerchantCluster, RescanResult } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -158,6 +158,29 @@ export const getUnreadAlerts = (): Promise<Alert[]> => {
 
 export const acknowledgeAlert = (alertId: number): Promise<Alert> => {
   return apiClient.put<Alert>(`/alerts/${alertId}/acknowledge`).then(res => res.data);
+};
+
+// 8. Merchants
+export const getMerchants = (q?: string): Promise<Merchant[]> => {
+  return apiClient.get<Merchant[]>('/merchants/', { params: q ? { q } : undefined }).then(res => res.data);
+};
+export const createMerchant = (data: { name: string; category_id: number | null }): Promise<Merchant> => {
+  return apiClient.post<Merchant>('/merchants/', data).then(res => res.data);
+};
+export const updateMerchant = (id: number, data: { name: string; category_id: number | null }): Promise<Merchant> => {
+  return apiClient.put<Merchant>(`/merchants/${id}`, data).then(res => res.data);
+};
+export const deleteMerchant = (id: number): Promise<Merchant> => {
+  return apiClient.delete<Merchant>(`/merchants/${id}`).then(res => res.data);
+};
+export const getUnmappedMerchantCount = (): Promise<number> => {
+  return apiClient.get<{ count: number }>('/merchants/unmapped-count').then(res => res.data.count);
+};
+export const getMerchantClusters = (): Promise<MerchantCluster[]> => {
+  return apiClient.get<MerchantCluster[]>('/merchants/clusters').then(res => res.data);
+};
+export const rescanMerchants = (): Promise<RescanResult> => {
+  return apiClient.post<RescanResult>('/merchants/rescan').then(res => res.data);
 };
 
 
