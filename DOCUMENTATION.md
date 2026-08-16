@@ -485,6 +485,8 @@ Defines all routes, wrapped in `ThemeProvider` and `MonthProvider`. Every route 
 | `components/MonitoringView.tsx` | Current month budget progress per category, incl. the Money Remaining card (coral + compacted/exact/over-% treatment when negative) |
 | `components/CategoryBudgetCard.tsx` | Individual category budget input row |
 | `components/TotalBudgetCard.tsx` | Summary card showing total budget vs total allocated |
+| `components/BillRadarCard.tsx` | Mint card, `GET /subscriptions`, filtered to bills due/overdue in the selected month, overdue-first then by date, overdue rows in red, header shows the expected total; renders nothing when the filtered list is empty |
+| `components/CategoryLimitsSection.tsx` | `GET /goals?month=` CRUD (dashed create form + status-pill/spend-bar cards + dashed "add a limit" tile); spend-per-category is looked up from `Budgets.tsx`'s already-fetched budget-plan data by `category_id`, not a separate fetch |
 
 `components/BudgetsKPICards.tsx` and `components/AddCategoryModal.tsx` exist in this directory but are dead code — not imported by `Budgets.tsx` or anywhere else. (`components/BudgetMonthFilter.tsx` — the old page-local month selector — has been deleted; superseded by the shared `MonthControl`.)
 
@@ -494,7 +496,7 @@ Defines all routes, wrapped in `ThemeProvider` and `MonthProvider`. Every route 
 
 | File | Purpose |
 |---|---|
-| `Analytics.tsx` | Page component. Owns `timePeriod`, `viewMode` (trend/month), `includeCapitalTransfers` state. In `viewMode === 'month'`, `timePeriod` is kept in sync with the shared `useMonth()` context and the header renders `<MonthControl />`; `viewMode === 'trend'` keeps its own independent range selector. Renders a static Wrapped teaser card (not yet wired to the actual Wrapped overlay) |
+| `Analytics.tsx` | Page component. Owns `timePeriod`, `viewMode` (trend/month), `includeCapitalTransfers` state. In `viewMode === 'month'`, `timePeriod` is kept in sync with the shared `useMonth()` context and the header renders `<MonthControl />`; `viewMode === 'trend'` keeps its own independent range selector. Renders the Wrapped teaser card, gated to month view with >=1 story, "Open" launches `Wrapped/WrappedOverlay.tsx` |
 | `components/AnalyticsHeader.tsx` | Time period selector (3m, 6m, 1y, all, or specific month via the shared month control), view toggle, capital transfers toggle, KPI display |
 | `components/SpendingVelocityChart.tsx` | Line chart — current month vs previous month vs historical average (day-by-day) |
 | `components/HabitIdentifierChart.tsx` | Bar chart — transaction count and average spend by category |
@@ -516,11 +518,33 @@ The Navbar's notification dropdown renders `new_merchant` alerts the same visual
 
 ---
 
+### `src/Wrapped/` — Wrapped Story Overlay
+
+Pure frontend, no backend endpoint — built entirely from data Analytics/Dashboard already fetch.
+
+| File | Purpose |
+|---|---|
+| `wrappedStories.ts` | `buildWrappedStories()` — pure function, no React. Ported from the mobile app's identical feature (`PFT-Mobile/src/app/(tabs)/trends.tsx`). Returns up to 3 stories (total spend + delta, top category, most-frequent-buy habit) from `AnalyticsData`/`DashboardData`. |
+| `WrappedOverlay.tsx` | Full-screen fixed `#1E1B16` field, independent of the app's theme toggle (every colour hardcoded). Yellow segmented progress bar, medallion + Archivo Black stat + caption, left/right tap-zone navigation, Share captures the card via `html2canvas` (same pattern as the chart-download buttons elsewhere) and copies a ready-made caption to the clipboard. **Rendered via `createPortal(..., document.body)`**, not inline in the tree — it's opened from deep inside the Analytics page, and something in that ancestor chain gave `fixed inset-0` a containing block short of the true viewport (a ~24px gap the sticky Navbar showed through); portaling straight to `<body>` sidesteps it regardless of cause. |
+
+---
+
+### `src/Assistant/` — Read-only Chat Panel
+
+| File | Purpose |
+|---|---|
+| `AssistantContext.tsx` | Global open/close state (`AssistantProvider`/`useAssistant()`) so the Navbar's entry button and the panel (mounted once in `MainLayout`, like `MonthPickerModal`) agree on it. |
+| `AssistantPanel.tsx` | 420px slide-in. Streams `POST /assistant/chat` via `apiClient.ts`'s `streamAssistantChat()` async generator, renders thread bubbles (`**bold**` markdown rendered inline — the system prompt requires it, not a full markdown parser), a thinking/fallback status line, `-> Label` navigate-cards, starter suggestion chips, and a `MediaRecorder`-based mic (60s cap) feeding `POST /assistant/transcribe`. No write endpoint is ever called from here. |
+
+Navigate-card clicks route via React Router and, for the `open` sheet hint: `month-picker` calls the shared `MonthContext`'s `openPicker()`; `add-transaction` sets navigation state `Expenses.tsx` reads to auto-open its modal; `budget-edit` is allow-listed server-side but not wired client-side (Budgets' setup modal is page-local state).
+
+---
+
 ### `src/Settings/` — App Configuration
 
 | File | Purpose |
 |---|---|
-| `Settings.tsx` | Page component. Loads categories, tags, accounts on mount |
+| `Settings.tsx` | Page component. Loads categories, tags, accounts, subscriptions on mount |
 | `components/CategorySettingsCard.tsx` | Lists categories with edit/delete. Opens CategoryModal |
 | `components/CategoryModal.tsx` | Form: category name + icon picker. Supports add and edit |
 | `components/IconPicker.tsx` | Grid of 33 selectable lucide icons for categories |
@@ -528,6 +552,8 @@ The Navbar's notification dropdown renders `new_merchant` alerts the same visual
 | `components/TagModal.tsx` | Form: tag name |
 | `components/AccountsCard.tsx` | Lists bank accounts with edit/delete |
 | `components/AccountModal.tsx` | Form: account name, type (Savings/Current/etc.), provider (bank name) |
+| `components/SubscriptionsCard.tsx` | Lists subscriptions — name/interval/due date (red if overdue)/amount, Pay, Edit, Delete, and an always-visible Unpay icon button once `last_paid_date` is set |
+| `components/SubscriptionModal.tsx` | Form: name, amount, interval, "this month's payment date" (`first_due_date`), optional "already paid this cycle" date (`last_paid_date`). Supports add and edit |
 | `components/DataSyncCard.tsx` | File input for uploading multiple bank statements (CSV, XLSX, XLS, or PDF). Calls `uploadStatements()` |
 | `components/ConfirmDeleteAccountModal.tsx` | Password re-entry confirmation before permanently deleting the user account |
 | `components/SettingsHeader.tsx` | Page heading |
@@ -828,8 +854,34 @@ Matching (`app/services/merchant_matching_service.py`) is 100% local -- no LLM c
 | GET | `/goals` | `month?` (YYYY-MM), `skip?`, `limit?` | `GoalOut[]` |
 | POST | `/goals` | `{ category_id, month, limit_amount }` | `GoalOut` |
 | GET | `/goals/{id}` | — | `GoalOut` |
-| PUT | `/goals/{id}` | `GoalUpdate` | `GoalOut` |
+| PUT | `/goals/{id}` | `{ limit_amount }` — only the limit is editable after creation | `GoalOut` |
 | DELETE | `/goals/{id}` | — | `{ message }` |
+
+`goal_router` and `budget_plan_router` (below) are two API shapes over the *same* `goals` table (`budget_plan_service.py` calls `goal_crud` directly) — not two separate concepts. `/budgets/plan`'s whole-month batch upsert powers the main Budgets monitoring view; `/goals`'s per-item CRUD powers the Budgets page's **Category limits** section (`frontend/src/Budgets/components/CategoryLimitsSection.tsx`). No `recurring` field exists on `Goal` despite some design references implying one.
+
+### Subscriptions (Bill Radar)
+
+| Method | Path | Params / Body | Response |
+|---|---|---|---|
+| GET | `/subscriptions` | `include_inactive?` (bool) | `SubscriptionOut[]` |
+| POST | `/subscriptions` | `{ name, description?, amount, interval, first_due_date, last_paid_date? }` | `SubscriptionOut` |
+| GET | `/subscriptions/{id}` | — | `SubscriptionOut` |
+| PUT | `/subscriptions/{id}` | any of the create fields + `is_active` | `SubscriptionOut` |
+| DELETE | `/subscriptions/{id}` | — | `SubscriptionOut` |
+| PUT | `/subscriptions/{id}/pay` | `{ paid_for_date? }` — defaults to whichever cycle is currently due | `SubscriptionOut` — advances the tracked due date |
+| PUT | `/subscriptions/{id}/unpay` | — | `SubscriptionOut` — undoes the most recent mark-paid |
+
+`interval` is one of `weekly/biweekly/monthly/quarterly/yearly`. `upcoming_due_date`/`overdue_due_date` are computed at read time by `subscription_service.py`, not stored columns. Powers the Settings page's Subscriptions card and the Budgets page's Bill Radar card (`frontend/src/Budgets/components/BillRadarCard.tsx`).
+
+### Assistant
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| POST | `/assistant/chat` | `{ messages: [{role, content}], month? }` | SSE stream (`text/event-stream`), event types `status\|delta\|tool\|navigate\|error\|done` — see `app/api/assistant_router.py`'s `_run_agent` |
+| POST | `/assistant/transcribe` | multipart `file` (audio) | `{ text }` |
+| GET | `/assistant/health` | — | `{ chat, voice, voice_reason? }` — capability probe the client polls to decide whether to enable the mic |
+
+Read-only by design — the assistant has no write tools (`app/services/assistant/tools.py`) and the frontend never calls a mutating endpoint from anything the model proposes. Chat streams via Groq with an NVIDIA fallback (independent of voice, which is Groq Whisper only, so an outage at one provider degrades exactly one capability). `POST /assistant/chat` can't use the browser's native `EventSource` (GET-only) — `frontend/src/api/apiClient.ts`'s `streamAssistantChat()` is a raw `fetch()` + `ReadableStream` async generator instead. Navigate targets are allow-listed both server-side (`ALLOWED_ROUTES`/`ALLOWED_SHEETS` in `assistant_router.py`) and re-validated client-side; keep both in sync with `frontend/src/App.tsx`'s actual routes if either changes.
 
 ### Alerts
 
