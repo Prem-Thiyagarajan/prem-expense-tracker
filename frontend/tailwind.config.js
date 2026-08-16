@@ -60,6 +60,12 @@ export default {
           misc: "#E8E2D4",
           rent: "#5C7CFA",
         },
+        // Fixed (non-theme-swapping) ink, for borders/rings drawn on top of a
+        // candy fill. Candy backgrounds stay the same light pastel in both
+        // themes, so a border that swaps to cream in dark mode (border-line)
+        // nearly disappears against them -- candy shapes always need the
+        // light-mode ink value specifically, never the theme-aware one.
+        candyLine: "#1E1B16",
         // Brand mark colours — icon/wordmark only, never in-app chrome (Part 4).
         brand: {
           lime: "#D8FF3E",

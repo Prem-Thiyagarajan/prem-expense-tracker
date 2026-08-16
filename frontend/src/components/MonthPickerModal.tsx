@@ -88,7 +88,7 @@ const MonthPickerModal: React.FC = () => {
                 className={[
                   "h-12 rounded-chip font-body font-semibold text-sm transition-all duration-chip",
                   selected
-                    ? "bg-candy-blue border-2 border-line text-[#1E1B16] shadow-card"
+                    ? "bg-candy-blue border-2 border-candyLine text-[#1E1B16] shadow-card"
                     : future
                     ? "border border-dashed border-faint text-faint opacity-50 pointer-events-none"
                     : "border-1.5 border-line hover:bg-hair",

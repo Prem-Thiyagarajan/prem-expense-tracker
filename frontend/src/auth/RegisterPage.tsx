@@ -13,7 +13,7 @@ const isPasswordStrong = (password: string): boolean => {
 };
 
 const inputClass = "w-full bg-bg border border-line rounded-chip px-3.5 py-3 mt-1.5 font-body text-sm text-ink placeholder:text-faint outline-none focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-ink transition-colors";
-const primaryButtonClass = "w-full py-3 rounded-chip border-2 border-line font-heading font-extrabold text-sm text-[#1E1B16] bg-candy-blue shadow-card hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-ink transition-all duration-press disabled:opacity-50 disabled:pointer-events-none";
+const primaryButtonClass = "w-full py-3 rounded-chip border-2 border-candyLine font-heading font-extrabold text-sm text-[#1E1B16] bg-candy-blue shadow-card hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-ink transition-all duration-press disabled:opacity-50 disabled:pointer-events-none";
 
 const RegisterPage: React.FC = () => {
     const [username, setUsername] = useState('');

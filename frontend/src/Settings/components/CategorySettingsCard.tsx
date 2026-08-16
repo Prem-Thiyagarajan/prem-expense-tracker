@@ -19,7 +19,7 @@ const CategorySettingsCard: React.FC<CategorySettingsCardProps> = ({ categories 
         <h2 className="font-heading font-extrabold text-base text-ink">Categories</h2>
         <button
           onClick={onAdd}
-          className="flex items-center gap-1 bg-candy-mint border-1.5 border-line rounded-full px-3.5 py-1.5 font-heading font-bold text-[11.5px] text-[#1E1B16] shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+          className="flex items-center gap-1 bg-candy-mint border-1.5 border-candyLine rounded-full px-3.5 py-1.5 font-heading font-bold text-[11.5px] text-[#1E1B16] shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
         >
           <Plus size={13} strokeWidth={3} /> Add
         </button>

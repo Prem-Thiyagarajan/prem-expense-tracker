@@ -89,7 +89,7 @@ const AnalyticsHeader: React.FC<AnalyticsHeaderProps> = ({
             <button
               type="button"
               onClick={() => setViewMode('month')}
-              className={`px-4 py-2 border-l border-line transition-colors duration-chip ${viewMode === 'month' ? 'bg-candy-yellow text-[#1E1B16]' : 'text-ink opacity-55 hover:opacity-100'}`}
+              className={`px-4 py-2 border-l transition-colors duration-chip ${viewMode === 'month' ? 'border-candyLine bg-candy-yellow text-[#1E1B16]' : 'border-line text-ink opacity-55 hover:opacity-100'}`}
             >
               Month
             </button>
@@ -113,7 +113,7 @@ const AnalyticsHeader: React.FC<AnalyticsHeaderProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-[18px]">
-        <div className="bg-candy-yellow border-2 border-line rounded-cardLg shadow-card p-5 text-[#1E1B16]">
+        <div className="bg-candy-yellow border-2 border-candyLine rounded-cardLg shadow-card p-5 text-[#1E1B16]">
           <p className="font-body font-semibold text-[10px] uppercase tracking-[0.14em] flex items-center gap-1.5">
             <BarChart3 size={14} /> Highest Spend Month
           </p>

@@ -62,7 +62,7 @@ const ConfirmDeleteAccountModal: React.FC<ConfirmDeleteAccountModalProps> = ({ i
           </button>
           <button
             onClick={handleConfirm}
-            className="px-4 py-2 rounded-full border-2 border-line bg-candy-coral text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+            className="px-4 py-2 rounded-full border-2 border-candyLine bg-candy-coral text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
           >
             Confirm &amp; Delete Account
           </button>

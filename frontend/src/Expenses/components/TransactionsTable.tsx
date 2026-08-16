@@ -68,7 +68,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
   return (
     <div className="bg-card border-2 border-line rounded-cardLg p-5">
       {isLoading && <div className="text-center py-16 font-body font-semibold text-muted">Loading transactions…</div>}
-      {error && <div className="text-center py-16 font-body text-semantic-red bg-candy-coral/15 border border-line rounded-card px-6">{error}</div>}
+      {error && <div className="text-center py-16 font-body text-semantic-red bg-candy-coral/15 border border-candyLine rounded-card px-6">{error}</div>}
 
       {!isLoading && !error && (
         days.length > 0 ? (
@@ -98,7 +98,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
             <p className="font-body text-muted mb-4">No transactions found for the selected filters.</p>
             <button
               onClick={onAdd}
-              className="inline-flex items-center gap-1.5 bg-candy-blue text-white border-2 border-line rounded-chip shadow-card px-4 py-2.5 font-heading font-extrabold text-[13px] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+              className="inline-flex items-center gap-1.5 bg-candy-blue text-white border-2 border-candyLine rounded-chip shadow-card px-4 py-2.5 font-heading font-extrabold text-[13px] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
             >
               <Plus size={16} /> Add a transaction
             </button>
@@ -112,7 +112,7 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({
           <div className="flex items-center gap-2">
             <button onClick={() => setCurrentPage(1)} disabled={atStart} className={`${pagePillBtn} bg-hair text-ink ${atStart ? 'opacity-35 cursor-not-allowed' : 'hover:opacity-70'}`}>‹ First</button>
             <button onClick={() => setCurrentPage(currentPage - 1)} disabled={atStart} className={`${pagePillBtn} bg-hair text-ink ${atStart ? 'opacity-35 cursor-not-allowed' : 'hover:opacity-70'}`}>Previous</button>
-            <span className="px-4 py-2 rounded-full border-2 border-line bg-candy-yellow shadow-chip font-heading font-bold text-[11.5px] text-[#1E1B16] whitespace-nowrap">
+            <span className="px-4 py-2 rounded-full border-2 border-candyLine bg-candy-yellow shadow-chip font-heading font-bold text-[11.5px] text-[#1E1B16] whitespace-nowrap">
               Page {currentPage} of {totalPages}
             </span>
             <button onClick={() => setCurrentPage(currentPage + 1)} disabled={atEnd} className={`${pagePillBtn} bg-card text-ink ${atEnd ? 'opacity-35 cursor-not-allowed' : 'hover:opacity-70'}`}>Next</button>

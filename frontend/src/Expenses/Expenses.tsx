@@ -134,7 +134,7 @@ const Expenses: React.FC = () => {
         </div>
         <button
           onClick={handleAddTransaction}
-          className="inline-flex items-center gap-1.5 bg-candy-blue text-white border-2 border-line rounded-chip shadow-card px-[18px] py-2.5 font-heading font-extrabold text-[13px] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+          className="inline-flex items-center gap-1.5 bg-candy-blue text-white border-2 border-candyLine rounded-chip shadow-card px-[18px] py-2.5 font-heading font-extrabold text-[13px] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
         >
           <Plus size={16} /> Add transaction
         </button>

@@ -35,7 +35,7 @@ const tagSelectClassNames = {
   control: () => 'min-h-[34px] !bg-bg border border-line rounded-full px-2 font-body cursor-pointer',
   valueContainer: () => 'gap-1 py-0.5 flex-wrap',
   placeholder: () => 'text-faint text-[10.5px] font-body',
-  multiValue: () => '!bg-candy-lilac border border-line rounded-full pl-2 pr-0.5 py-0 my-0.5 items-center gap-1',
+  multiValue: () => '!bg-candy-lilac border border-candyLine rounded-full pl-2 pr-0.5 py-0 my-0.5 items-center gap-1',
   multiValueLabel: () => 'text-[10px] font-body font-bold text-[#1E1B16] py-0.5',
   multiValueRemove: () => 'text-[#1E1B16] hover:text-semantic-red rounded-full px-1',
   menu: () => 'bg-card border-2 border-line rounded-card shadow-overlay mt-1.5 overflow-hidden z-20',
@@ -160,10 +160,10 @@ const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, categori
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <button onClick={() => onEdit(transaction)} aria-label="Edit transaction" className="w-8 h-8 rounded-chip border border-line bg-hair flex items-center justify-center hover:bg-candy-yellow transition-colors">
+          <button onClick={() => onEdit(transaction)} aria-label="Edit transaction" className="w-8 h-8 rounded-chip border border-line bg-hair flex items-center justify-center hover:bg-candy-yellow hover:border-candyLine transition-colors">
             <Pencil size={14} />
           </button>
-          <button onClick={() => onDelete(transaction.id)} aria-label="Delete transaction" className="w-8 h-8 rounded-chip border border-line bg-candy-pink text-[#1E1B16] flex items-center justify-center hover:opacity-75 transition-opacity">
+          <button onClick={() => onDelete(transaction.id)} aria-label="Delete transaction" className="w-8 h-8 rounded-chip border border-candyLine bg-candy-pink text-[#1E1B16] flex items-center justify-center hover:opacity-75 transition-opacity">
             <Trash2 size={14} />
           </button>
         </div>

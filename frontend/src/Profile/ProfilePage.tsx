@@ -105,7 +105,7 @@ const ProfilePage: React.FC = () => {
     };
 
     if (isLoading) return <div className="p-8 text-center font-body font-semibold text-ink">Loading Profile...</div>;
-    if (error) return <div className="m-6 p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-line rounded-card">{error}</div>;
+    if (error) return <div className="m-6 p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-candyLine rounded-card">{error}</div>;
     if (!user) return <div className="p-8 text-center font-body text-muted">Could not find user data.</div>;
 
     return (
@@ -118,7 +118,7 @@ const ProfilePage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-[18px] items-start">
                 <div className="flex flex-col gap-[18px]">
                     {/* Identity card */}
-                    <div className="bg-candy-pink border-2 border-line rounded-cardLg shadow-card p-6 text-[#1E1B16]">
+                    <div className="bg-candy-pink border-2 border-candyLine rounded-cardLg shadow-card p-6 text-[#1E1B16]">
                         <div className="flex items-center gap-4">
                             <span className="w-[58px] h-[58px] rounded-full bg-white border-2 border-line flex items-center justify-center font-heading font-extrabold text-xl shrink-0">
                                 {user.username.charAt(0).toUpperCase()}

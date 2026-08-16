@@ -99,7 +99,7 @@ const CategoryModal: React.FC<CategoryModalProps> = ({
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 rounded-full border-2 border-line bg-candy-mint text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50 disabled:pointer-events-none"
+            className="px-4 py-2 rounded-full border-2 border-candyLine bg-candy-mint text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50 disabled:pointer-events-none"
           >
             {isSaving ? 'Saving...' : (categoryToEdit ? 'Update Category' : 'Create Category')}
           </button>

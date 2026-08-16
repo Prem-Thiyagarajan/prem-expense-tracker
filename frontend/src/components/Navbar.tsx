@@ -120,7 +120,7 @@ const Navbar: React.FC = () => {
     if (alert.type === 'new_category' && alert.context?.category_name) {
       return (
         <div key={alert.id} className="p-3 border-b border-hair hover:bg-hair/60 flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full border-1.5 border-line bg-candy-lilac flex items-center justify-center shrink-0 mt-0.5" />
+          <div className="w-8 h-8 rounded-full border-1.5 border-candyLine bg-candy-lilac flex items-center justify-center shrink-0 mt-0.5" />
           <div className="flex-grow">
             <p className="text-sm font-body">New category found: <strong className="font-heading">{alert.context.category_name}</strong></p>
             <p className="text-xs font-body text-faint mt-1">{dayjs(alert.triggered_at).fromNow()}</p>
@@ -140,7 +140,7 @@ const Navbar: React.FC = () => {
     if (alert.type === 'budget' && alert.goal) {
       return (
         <div key={alert.id} className="p-3 border-b border-hair hover:bg-hair/60 flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full border-1.5 border-line bg-candy-coral flex items-center justify-center shrink-0 mt-0.5" />
+          <div className="w-8 h-8 rounded-full border-1.5 border-candyLine bg-candy-coral flex items-center justify-center shrink-0 mt-0.5" />
           <div className="flex-grow">
             <p className="text-sm font-body">
               You've used {alert.threshold_percentage}% of your <strong className="font-heading">{alert.goal?.category?.name || 'a'}</strong> budget for {dayjs(alert.goal?.month + "-01").format("MMMM")}.
@@ -181,7 +181,7 @@ const Navbar: React.FC = () => {
               [
                 "px-3.5 py-2 rounded-full text-sm font-body font-semibold transition-all duration-chip",
                 isActive
-                  ? "bg-candy-yellow border-1.5 border-line shadow-chip text-[#1E1B16]"
+                  ? "bg-candy-yellow border-1.5 border-candyLine shadow-chip text-[#1E1B16]"
                   : "opacity-55 hover:opacity-100 text-ink",
               ].join(" ")
             }
@@ -211,7 +211,7 @@ const Navbar: React.FC = () => {
         <button
           aria-label="Ask the assistant"
           title="Assistant"
-          className="w-10 h-10 rounded-[14px] border-1.5 border-line bg-candy-lilac shadow-chip flex items-center justify-center text-[#1E1B16] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+          className="w-10 h-10 rounded-[14px] border-1.5 border-candyLine bg-candy-lilac shadow-chip flex items-center justify-center text-[#1E1B16] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
         >
           <Sparkles size={17} />
         </button>
@@ -224,7 +224,7 @@ const Navbar: React.FC = () => {
           >
             <Bell size={17} />
             {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 px-0.5 items-center justify-center rounded-full border-1.5 border-line bg-candy-coral text-[10px] font-body font-bold text-[#1E1B16]">
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 px-0.5 items-center justify-center rounded-full border-1.5 border-candyLine bg-candy-coral text-[10px] font-body font-bold text-[#1E1B16]">
                 {unreadCount}
               </span>
             )}
@@ -255,7 +255,7 @@ const Navbar: React.FC = () => {
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             aria-label="Account menu"
-            className="w-10 h-10 rounded-full border-1.5 border-line bg-candy-pink shadow-chip flex items-center justify-center text-[#1E1B16]"
+            className="w-10 h-10 rounded-full border-1.5 border-candyLine bg-candy-pink shadow-chip flex items-center justify-center text-[#1E1B16]"
           >
             <User size={17} />
           </button>

@@ -153,7 +153,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSave, transactio
                 );
               })}
             </div>
-            <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-chip border border-line bg-hair flex items-center justify-center hover:bg-candy-pink transition-colors">
+            <button onClick={onClose} aria-label="Close" className="w-8 h-8 rounded-chip border border-line bg-hair flex items-center justify-center hover:bg-candy-pink hover:border-candyLine transition-colors">
               <X size={16} />
             </button>
           </div>

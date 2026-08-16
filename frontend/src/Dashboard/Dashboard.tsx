@@ -57,7 +57,7 @@ const Dashboard: React.FC = () => {
   }, [currentMonth]);
 
   if (isLoading) return <div className="p-8 text-center font-body font-semibold text-ink">Loading Dashboard...</div>;
-  if (error) return <div className="m-6 p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-line rounded-card">{error}</div>;
+  if (error) return <div className="m-6 p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-candyLine rounded-card">{error}</div>;
   if (!data) return <div className="p-8 text-center font-body text-muted">No data available for the selected month.</div>;
 
   const delta = data.percentChangeFromLastMonth;
@@ -71,7 +71,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Hero: mint card, month total */}
-      <div className="bg-candy-mint border-2 border-line rounded-cardLg shadow-card p-6 text-[#1E1B16]">
+      <div className="bg-candy-mint border-2 border-candyLine rounded-cardLg shadow-card p-6 text-[#1E1B16]">
         <div className="flex items-center justify-between gap-4 mb-3">
           <span className="font-body font-semibold text-[9.5px] uppercase tracking-[0.14em]">
             Spent in {formatMonthLabel(currentMonth)}

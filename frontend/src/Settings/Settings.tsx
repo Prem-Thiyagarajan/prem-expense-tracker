@@ -120,7 +120,7 @@ const Settings: React.FC = () => {
   };
 
   if (isLoading) return <div className="p-8 text-center font-body font-semibold text-ink">Loading...</div>;
-  if (error) return <div className="m-6 p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-line rounded-card">{error}</div>;
+  if (error) return <div className="m-6 p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-candyLine rounded-card">{error}</div>;
 
   const usedIcons = new Set(categories.map(c => c.icon_name).filter((icon): icon is string => !!icon));
   if (categoryToEdit && categoryToEdit.icon_name) {
@@ -158,7 +158,7 @@ const Settings: React.FC = () => {
           </div>
           <button
               onClick={() => setIsConfirmDeleteAccountModalOpen(true)}
-              className="bg-candy-coral border-2 border-line rounded-chip shadow-overlay px-5 py-3 font-heading font-extrabold text-[13px] text-[#1E1B16] shrink-0 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+              className="bg-candy-coral border-2 border-candyLine rounded-chip shadow-overlay px-5 py-3 font-heading font-extrabold text-[13px] text-[#1E1B16] shrink-0 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
           >
               Delete My Account
           </button>

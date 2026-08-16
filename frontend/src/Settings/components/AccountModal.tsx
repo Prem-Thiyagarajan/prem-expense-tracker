@@ -126,7 +126,7 @@ const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, onSave, ac
 
         <div className="flex justify-end gap-2.5 pt-4">
           <button onClick={onClose} className="px-4 py-2 rounded-full border-1.5 border-line font-body font-semibold text-sm hover:bg-hair transition-colors">Cancel</button>
-          <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 rounded-full border-2 border-line bg-candy-yellow text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50 disabled:pointer-events-none">
+          <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 rounded-full border-2 border-candyLine bg-candy-yellow text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50 disabled:pointer-events-none">
             {isSaving ? 'Saving...' : (isEditMode ? 'Update Account' : 'Create Account')}
           </button>
         </div>

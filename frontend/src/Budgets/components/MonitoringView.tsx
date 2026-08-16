@@ -100,7 +100,7 @@ const MonitoringView: React.FC<Props> = ({ data, pacingData, onEdit, onDelete, i
                 </div>
 
                 {isOverBudget ? (
-                    <div className="bg-candy-coral border-2 border-line rounded-cardLg shadow-card p-5 text-[#1E1B16]">
+                    <div className="bg-candy-coral border-2 border-candyLine rounded-cardLg shadow-card p-5 text-[#1E1B16]">
                         <div className="flex justify-between items-center gap-2">
                             <h3 className="font-body font-semibold text-[10px] uppercase tracking-[0.14em]">Money Remaining</h3>
                             {percentOver !== null && (

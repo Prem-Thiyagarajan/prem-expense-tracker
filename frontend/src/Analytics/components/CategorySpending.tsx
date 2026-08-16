@@ -57,7 +57,7 @@ const TransactionHeatmap: React.FC<Props> = ({ data = [], timePeriod }) => {
             return { bg: 'bg-transparent', border: 'border-[1.5px] border-dashed border-line', text: 'text-faint' };
         }
         if (isToday) {
-            return { bg: 'bg-candy-coral', border: 'border border-line', text: 'text-[#1E1B16]' };
+            return { bg: 'bg-candy-coral', border: 'border border-candyLine', text: 'text-[#1E1B16]' };
         }
         if (spend <= 0) {
             return { bg: 'bg-hair', border: 'border border-line', text: 'text-muted' };

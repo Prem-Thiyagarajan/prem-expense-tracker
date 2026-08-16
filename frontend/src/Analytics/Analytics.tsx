@@ -48,7 +48,7 @@ const Analytics: React.FC = () => {
   }, [timePeriod, includeCapitalTransfers]);
 
   if (isLoading) return <div className="p-8 text-center font-body font-semibold text-ink">Loading Analytics...</div>;
-  if (error) return <div className="m-6 p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-line rounded-card">{error}</div>;
+  if (error) return <div className="m-6 p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-candyLine rounded-card">{error}</div>;
   // Use a default object for overview to prevent crashes before data loads
   if (!data) return <div className="p-8 text-center font-body text-muted">No data available for the selected period.</div>;
 
@@ -78,7 +78,7 @@ const Analytics: React.FC = () => {
           <p className="font-heading font-extrabold text-base text-candy-yellow">{formatMonthLabel(month)} Wrapped is ready 🎁</p>
           <p className="font-body text-xs text-[#B9B2A6] mt-1">Your month in shareable cards</p>
         </div>
-        <span className="bg-candy-yellow border border-line rounded-full px-4 py-2 font-heading font-extrabold text-xs text-[#1E1B16] whitespace-nowrap">
+        <span className="bg-candy-yellow border border-candyLine rounded-full px-4 py-2 font-heading font-extrabold text-xs text-[#1E1B16] whitespace-nowrap">
           Open
         </span>
       </div>

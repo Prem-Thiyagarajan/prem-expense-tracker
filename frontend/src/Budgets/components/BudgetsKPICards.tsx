@@ -40,7 +40,7 @@ const BudgetsKPICards: React.FC<BudgetsKPICardsProps> = ({
       </div>
 
       {/* Money Remaining Card */}
-      <div className={isOverBudget ? "bg-candy-coral border-2 border-line rounded-cardLg shadow-card p-5 text-[#1E1B16]" : "bg-card border-2 border-line rounded-cardLg p-5"}>
+      <div className={isOverBudget ? "bg-candy-coral border-2 border-candyLine rounded-cardLg shadow-card p-5 text-[#1E1B16]" : "bg-card border-2 border-line rounded-cardLg p-5"}>
         <h3 className={isOverBudget ? "font-body font-semibold text-[10px] uppercase tracking-[0.14em]" : "font-body font-semibold text-[10px] uppercase tracking-[0.14em] text-muted"}>Money Remaining</h3>
         <p className={`font-money text-[28px] leading-none tracking-[-0.02em] mt-3 ${isOverBudget ? '' : 'text-semantic-green'}`}>
           {formatCurrency(moneyRemaining)}

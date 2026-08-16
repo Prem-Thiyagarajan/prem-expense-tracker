@@ -92,7 +92,7 @@ const Budgets: React.FC = () => {
 
     const renderContent = () => {
         if (isLoading) return <div className="p-8 text-center font-body font-semibold text-ink">Loading Budgets...</div>;
-        if (error) return <div className="p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-line rounded-card">{error}</div>;
+        if (error) return <div className="p-4 text-center font-body text-semantic-red bg-candy-coral/20 border-2 border-candyLine rounded-card">{error}</div>;
         if (!data) return null;
 
         if (data.plan) {

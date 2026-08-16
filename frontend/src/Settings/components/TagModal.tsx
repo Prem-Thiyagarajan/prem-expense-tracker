@@ -56,7 +56,7 @@ const TagModal: React.FC<Props> = ({ isOpen, onClose, onSave, tagToEdit }) => {
         {error && <p className="font-body text-sm text-semantic-red mt-2">{error}</p>}
         <div className="flex justify-end gap-2.5 pt-4">
           <button onClick={onClose} className="px-4 py-2 rounded-full border-1.5 border-line font-body font-semibold text-sm hover:bg-hair transition-colors">Cancel</button>
-          <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 rounded-full border-2 border-line bg-candy-lilac text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50 disabled:pointer-events-none">
+          <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 rounded-full border-2 border-candyLine bg-candy-lilac text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50 disabled:pointer-events-none">
             {isSaving ? 'Saving...' : 'Save Tag'}
           </button>
         </div>

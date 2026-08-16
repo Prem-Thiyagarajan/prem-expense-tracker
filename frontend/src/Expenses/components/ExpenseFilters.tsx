@@ -99,7 +99,7 @@ const ExpenseFilters: React.FC<ExpenseFiltersProps> = ({
         <button
           type="button"
           onClick={onApplyFilters}
-          className="px-5 py-2.5 rounded-full border border-line bg-candy-yellow font-heading font-bold text-xs text-[#1E1B16] shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+          className="px-5 py-2.5 rounded-full border border-candyLine bg-candy-yellow font-heading font-bold text-xs text-[#1E1B16] shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
         >
           Apply
         </button>

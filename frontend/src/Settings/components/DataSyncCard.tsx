@@ -30,7 +30,7 @@ const DataSyncCard: React.FC = () => {
   const handleUploadClick = () => fileInputRef.current?.click();
 
   return (
-    <div className="bg-candy-mint border-2 border-dashed border-line rounded-cardLg p-6 flex flex-col sm:flex-row sm:items-center gap-5 text-[#1E1B16]">
+    <div className="bg-candy-mint border-2 border-dashed border-candyLine rounded-cardLg p-6 flex flex-col sm:flex-row sm:items-center gap-5 text-[#1E1B16]">
       <div className="w-14 h-14 rounded-card bg-card border-2 border-line shadow-card flex items-center justify-center shrink-0">
         <FileText size={24} />
       </div>

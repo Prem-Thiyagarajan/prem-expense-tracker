@@ -19,7 +19,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ isOpen, onClose, onConfirm,
           <button onClick={onClose} className="px-4 py-2 rounded-full border-1.5 border-line font-body font-semibold text-sm hover:bg-hair transition-colors">
             Cancel
           </button>
-          <button onClick={onConfirm} className="px-4 py-2 rounded-full border-2 border-line bg-candy-coral text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press">
+          <button onClick={onConfirm} className="px-4 py-2 rounded-full border-2 border-candyLine bg-candy-coral text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press">
             Confirm delete
           </button>
         </div>

@@ -57,7 +57,7 @@ const SmartEmptyState: React.FC<Props> = ({ data, onCreate, isPastMonth }) => {
                 <button
                     onClick={onCreate}
                     disabled={isPastMonth}
-                    className="font-heading font-bold text-sm px-8 py-3.5 rounded-chip border-2 border-line bg-candy-blue text-[#1E1B16] shadow-card hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-card"
+                    className="font-heading font-bold text-sm px-8 py-3.5 rounded-chip border-2 border-candyLine bg-candy-blue text-[#1E1B16] shadow-card hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:shadow-card"
                 >
                     {isPastMonth ? 'Cannot Budget for Past Months' : 'Create Monthly Budget'}
                 </button>

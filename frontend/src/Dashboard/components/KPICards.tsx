@@ -33,7 +33,7 @@ const KPICards: React.FC<KPICardsProps> = ({ dailyAverage, projectedSpend }) => 
         </div>
       </div>
 
-      <div className="bg-candy-pink border-2 border-line rounded-cardLg shadow-card p-5 flex justify-between items-center text-[#1E1B16]">
+      <div className="bg-candy-pink border-2 border-candyLine rounded-cardLg shadow-card p-5 flex justify-between items-center text-[#1E1B16]">
         <div>
           <p className="font-body font-semibold text-[9.5px] uppercase tracking-[0.14em]">Projected Spend</p>
           <p className="font-money text-[28px] leading-none tracking-[-0.02em] mt-2">{formatCurrency(projectedSpend)}</p>
