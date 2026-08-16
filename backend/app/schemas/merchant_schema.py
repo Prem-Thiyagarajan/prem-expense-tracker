@@ -1,6 +1,6 @@
 # File: app/schemas/merchant_schema.py
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
 
 class MerchantBase(BaseModel):
     name: str
@@ -18,3 +18,19 @@ class MerchantOut(MerchantBase):
 
     class Config:
         from_attributes = True
+
+class UnmappedCountOut(BaseModel):
+    count: int
+
+class MerchantClusterOut(BaseModel):
+    """One group of currently-unmapped transactions sharing a UPI handle --
+    the cold-start bulk-naming banner ("N strings look like the same
+    merchant")."""
+    handle: Optional[str] = None
+    sample_description: str
+    transaction_ids: List[int]
+    count: int
+
+class RescanResultOut(BaseModel):
+    auto_applied: int
+    suggested: int
