@@ -11,53 +11,59 @@ import {
 } from 'lucide-react';
 
 // --- The Massively Expanded Icon Map ---
+// Colours are pastel tints (never a saturated 500+ fill) so ink text/icons
+// stay >= 7:1 contrast on top -- handoff/README.md SS Accessibility: "ink on
+// cream is 14:1; candy cards carry ink text at >= 7:1 -- never white text on
+// candy." Each icon keeps its own distinct hue (33 categories need to stay
+// scannable at a glance); where a hue has a direct candy-token equivalent
+// that's used verbatim, otherwise a matching Tailwind 200-level pastel.
 const iconRegistry: { [key: string]: { component: React.ReactElement, color: string } } = {
     // --- Standard Categories ---
-    'utensils':     { component: <Utensils />,     color: 'bg-red-500' },       // Food
-    'pizza':        { component: <Pizza />,         color: 'bg-orange-500' },   // Food
-    'shopping-bag': { component: <ShoppingBag />,  color: 'bg-blue-500' },     // Shopping
-    'shirt':        { component: <Shirt />,         color: 'bg-sky-500' },      // Shopping
-    'car':          { component: <Car />,          color: 'bg-yellow-500' },   // Transport
-    'train':        { component: <Train />,         color: 'bg-amber-500' },    // Transport
-    'bus':          { component: <Bus />,           color: 'bg-orange-400' },   // Transport
-    'ticket':       { component: <Ticket />,       color: 'bg-purple-500' },   // Entertainment
-    'clapperboard': { component: <Clapperboard />, color: 'bg-violet-500' },   // Entertainment
-    'gamepad-2':    { component: <Gamepad2 />,     color: 'bg-fuchsia-500' },  // Entertainment
-    'zap':          { component: <Zap />,          color: 'bg-rose-500' },     // Bills
-    'receipt':      { component: <Receipt />,      color: 'bg-red-400' },      // Bills
-    'heart':        { component: <Heart />,        color: 'bg-pink-500' },     // Health
-    'pill':         { component: <Pill />,         color: 'bg-pink-400' },     // Health
-    'ambulance':    { component: <Ambulance />,    color: 'bg-red-600' },      // Health
-    'graduation-cap': { component: <GraduationCap />,color: 'bg-indigo-500' }, // Education
-    'university':   { component: <University />,   color: 'bg-indigo-400' },   // Education
-    'home':         { component: <Home />,         color: 'bg-teal-500' },     // Rent
-    'plane':        { component: <Plane />,        color: 'bg-cyan-500' },     // Travel / Transfers
-    'building':     { component: <Building />,     color: 'bg-orange-600' },   // Services
-    'leaf':         { component: <Leaf />,         color: 'bg-lime-500' },     // Groceries
-    'sprout':       { component: <Sprout />,       color: 'bg-green-400' },    // Groceries
-    'paw-print':    { component: <PawPrint />,     color: 'bg-amber-700' },    // Pets
-    'cat':          { component: <Cat />,           color: 'bg-stone-500' },    // Pets
-    'dog':          { component: <Dog />,           color: 'bg-yellow-800' },   // Pets
-    'briefcase':    { component: <Briefcase />,    color: 'bg-sky-600' },      // Salary / Work
-    'laptop':       { component: <Laptop />,       color: 'bg-gray-700' },     // Work / Tech
-    'phone':        { component: <Phone />,        color: 'bg-blue-400' },     // Communication
-    'gift':         { component: <Gift />,         color: 'bg-rose-400' },     // Gifts
-    'dumbbell':     { component: <Dumbbell />,     color: 'bg-red-700' },      // Personal Care / Gym
-    'coffee':       { component: <Coffee />,       color: 'bg-yellow-900' },   // Personal Care
-    'piggy-bank':   { component: <PiggyBank />,    color: 'bg-fuchsia-600' },  // Savings
-    'landmark':     { component: <Landmark />,     color: 'bg-emerald-500' },  // Investments
-    'shapes':       { component: <Shapes />,       color: 'bg-slate-500' },    // Miscellaneous
-    'package':      { component: <Package />,      color: 'bg-gray-500' },     // Miscellaneous
-    'default':      { component: <HelpCircle />,   color: 'bg-gray-400' },
+    'utensils':     { component: <Utensils />,     color: 'bg-candy-coral' },  // Food
+    'pizza':        { component: <Pizza />,         color: 'bg-orange-200' },  // Food
+    'shopping-bag': { component: <ShoppingBag />,  color: 'bg-candy-blue' },   // Shopping
+    'shirt':        { component: <Shirt />,         color: 'bg-sky-200' },     // Shopping
+    'car':          { component: <Car />,          color: 'bg-candy-yellow' },// Transport
+    'train':        { component: <Train />,         color: 'bg-amber-200' },   // Transport
+    'bus':          { component: <Bus />,           color: 'bg-orange-200' },  // Transport
+    'ticket':       { component: <Ticket />,       color: 'bg-candy-lilac' }, // Entertainment
+    'clapperboard': { component: <Clapperboard />, color: 'bg-violet-200' },  // Entertainment
+    'gamepad-2':    { component: <Gamepad2 />,     color: 'bg-fuchsia-200' }, // Entertainment
+    'zap':          { component: <Zap />,          color: 'bg-rose-200' },    // Bills
+    'receipt':      { component: <Receipt />,      color: 'bg-red-200' },     // Bills
+    'heart':        { component: <Heart />,        color: 'bg-candy-pink' },  // Health
+    'pill':         { component: <Pill />,         color: 'bg-pink-200' },    // Health
+    'ambulance':    { component: <Ambulance />,    color: 'bg-red-200' },     // Health
+    'graduation-cap': { component: <GraduationCap />,color: 'bg-indigo-200' },// Education
+    'university':   { component: <University />,   color: 'bg-indigo-200' }, // Education
+    'home':         { component: <Home />,         color: 'bg-teal-200' },    // Rent
+    'plane':        { component: <Plane />,        color: 'bg-cyan-200' },    // Travel / Transfers
+    'building':     { component: <Building />,     color: 'bg-orange-200' },  // Services
+    'leaf':         { component: <Leaf />,         color: 'bg-candy-mint' },  // Groceries
+    'sprout':       { component: <Sprout />,       color: 'bg-green-200' },   // Groceries
+    'paw-print':    { component: <PawPrint />,     color: 'bg-amber-200' },   // Pets
+    'cat':          { component: <Cat />,           color: 'bg-stone-200' },   // Pets
+    'dog':          { component: <Dog />,           color: 'bg-yellow-200' },  // Pets
+    'briefcase':    { component: <Briefcase />,    color: 'bg-sky-200' },     // Salary / Work
+    'laptop':       { component: <Laptop />,       color: 'bg-hair' },        // Work / Tech
+    'phone':        { component: <Phone />,        color: 'bg-blue-200' },    // Communication
+    'gift':         { component: <Gift />,         color: 'bg-rose-200' },    // Gifts
+    'dumbbell':     { component: <Dumbbell />,     color: 'bg-red-200' },     // Personal Care / Gym
+    'coffee':       { component: <Coffee />,       color: 'bg-yellow-200' },  // Personal Care
+    'piggy-bank':   { component: <PiggyBank />,    color: 'bg-fuchsia-200' }, // Savings
+    'landmark':     { component: <Landmark />,     color: 'bg-emerald-200' }, // Investments
+    'shapes':       { component: <Shapes />,       color: 'bg-slate-200' },   // Miscellaneous
+    'package':      { component: <Package />,      color: 'bg-hair' },        // Miscellaneous
+    'default':      { component: <HelpCircle />,   color: 'bg-hair' },
 };
 
-// This helper function renders the final icon component (no change needed)
+// This helper function renders the final icon component.
 const renderIcon = (iconKey: string): React.ReactNode => {
     const iconData = iconRegistry[iconKey] || iconRegistry['default'];
-    const iconProps = { size: 20, className: 'text-white' };
+    const iconProps = { size: 18, className: 'text-[#1E1B16]' };
     const iconComponent = React.cloneElement(iconData.component, iconProps);
     return (
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconData.color}`}>
+        <div className={`w-8 h-8 rounded-chip border-1.5 border-line flex items-center justify-center shrink-0 ${iconData.color}`}>
             {iconComponent}
         </div>
     );

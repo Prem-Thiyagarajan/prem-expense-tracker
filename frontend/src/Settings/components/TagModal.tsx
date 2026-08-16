@@ -50,13 +50,13 @@ const TagModal: React.FC<Props> = ({ isOpen, onClose, onSave, tagToEdit }) => {
     <Modal isOpen={isOpen} onClose={onClose} title={tagToEdit ? "Edit Tag" : "Add New Tag"}>
       <div className="space-y-4">
         <div>
-          <label htmlFor="tagName" className="block text-sm font-medium text-gray-700">Tag Name</label>
-          <input type="text" id="tagName" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md p-2" />
+          <label htmlFor="tagName" className="block font-body font-semibold text-[10px] uppercase tracking-[0.14em] text-muted mb-1.5">Tag Name</label>
+          <input type="text" id="tagName" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-bg border-1.5 border-line rounded-[12px] px-3.5 py-2.5 font-body text-sm text-ink outline-none focus:ring-2 focus:ring-link/40" />
         </div>
-        {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
-        <div className="flex justify-end space-x-3 pt-4">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded-md">Cancel</button>
-          <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:bg-gray-400">
+        {error && <p className="font-body text-sm text-semantic-red mt-2">{error}</p>}
+        <div className="flex justify-end gap-2.5 pt-4">
+          <button onClick={onClose} className="px-4 py-2 rounded-full border-1.5 border-line font-body font-semibold text-sm hover:bg-hair transition-colors">Cancel</button>
+          <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 rounded-full border-2 border-line bg-candy-lilac text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50 disabled:pointer-events-none">
             {isSaving ? 'Saving...' : 'Save Tag'}
           </button>
         </div>

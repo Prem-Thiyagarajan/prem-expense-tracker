@@ -83,38 +83,38 @@ const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, onSave, ac
       <div className="space-y-4">
         {/* Account Name Input */}
         <div>
-          <label htmlFor="accountName" className="block text-sm font-medium text-gray-700">Account Name</label>
+          <label htmlFor="accountName" className="block font-body font-semibold text-[10px] uppercase tracking-[0.14em] text-muted mb-1.5">Account Name</label>
           <input
             type="text"
             id="accountName"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+            className="w-full bg-bg border-1.5 border-line rounded-[12px] px-3.5 py-2.5 font-body text-sm text-ink outline-none focus:ring-2 focus:ring-link/40"
             placeholder="e.g., My HDFC Savings"
           />
         </div>
 
         {/* Provider Input (Bank Name) */}
         <div>
-          <label htmlFor="provider" className="block text-sm font-medium text-gray-700">Provider</label>
+          <label htmlFor="provider" className="block font-body font-semibold text-[10px] uppercase tracking-[0.14em] text-muted mb-1.5">Provider</label>
           <input
             type="text"
             id="provider"
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+            className="w-full bg-bg border-1.5 border-line rounded-[12px] px-3.5 py-2.5 font-body text-sm text-ink outline-none focus:ring-2 focus:ring-link/40"
             placeholder="e.g., HDFC, ICICI, Cash"
           />
         </div>
-        
+
         {/* Type Selector */}
         <div>
-          <label htmlFor="type" className="block text-sm font-medium text-gray-700">Account Type</label>
+          <label htmlFor="type" className="block font-body font-semibold text-[10px] uppercase tracking-[0.14em] text-muted mb-1.5">Account Type</label>
           <select
             id="type"
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+            className="w-full bg-bg border-1.5 border-line rounded-[12px] px-3.5 py-2.5 font-body font-semibold text-sm text-ink outline-none focus:ring-2 focus:ring-link/40"
           >
             <option>Bank</option>
             <option>Cash</option>
@@ -122,11 +122,11 @@ const AccountModal: React.FC<AccountModalProps> = ({ isOpen, onClose, onSave, ac
           </select>
         </div>
 
-        {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+        {error && <p className="font-body text-sm text-semantic-red mt-2">{error}</p>}
 
-        <div className="flex justify-end space-x-3 pt-4">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Cancel</button>
-          <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-md disabled:bg-gray-400">
+        <div className="flex justify-end gap-2.5 pt-4">
+          <button onClick={onClose} className="px-4 py-2 rounded-full border-1.5 border-line font-body font-semibold text-sm hover:bg-hair transition-colors">Cancel</button>
+          <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 rounded-full border-2 border-line bg-candy-yellow text-[#1E1B16] font-body font-semibold text-sm shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press disabled:opacity-50 disabled:pointer-events-none">
             {isSaving ? 'Saving...' : (isEditMode ? 'Update Account' : 'Create Account')}
           </button>
         </div>

@@ -83,6 +83,12 @@ export default {
       },
       borderWidth: {
         DEFAULT: "1.5px",
+        // Explicit `1.5` key so the literal class `border-1.5` (used
+        // throughout this redesign for rows/chips/inputs, interchangeably
+        // with the bare `border` DEFAULT above) actually generates CSS --
+        // Tailwind only emits border-width utilities for keys defined here,
+        // it doesn't infer arbitrary numeric suffixes the way spacing does.
+        1.5: "1.5px",
         2: "2px",
       },
       maxWidth: {

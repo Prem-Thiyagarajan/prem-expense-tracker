@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import ExpenseFilters from "./components/ExpenseFilters";
 import TransactionsTable from "./components/TransactionsTable";
 import ConfirmModal from '../components/ui/ConfirmModal';
@@ -123,8 +124,23 @@ const Expenses: React.FC = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 flex flex-col h-[calc(100vh-4rem)]">
-      <ExpenseFilters 
+    <div className="max-w-content mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-heading font-extrabold text-[32px] leading-none tracking-[-0.02em]">Expenses</h1>
+          <p className="font-body font-medium text-[13px] text-muted mt-2">
+            {totalCount} {totalCount === 1 ? 'transaction' : 'transactions'} found
+          </p>
+        </div>
+        <button
+          onClick={handleAddTransaction}
+          className="inline-flex items-center gap-1.5 bg-candy-blue text-white border-2 border-line rounded-chip shadow-card px-[18px] py-2.5 font-heading font-extrabold text-[13px] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
+        >
+          <Plus size={16} /> Add transaction
+        </button>
+      </div>
+
+      <ExpenseFilters
         onApplyFilters={handleApplyFilters}
         onResetFilters={handleResetFilters}
         allCategories={allCategories} 

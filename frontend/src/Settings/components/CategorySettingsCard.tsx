@@ -1,7 +1,7 @@
 // File: src/Settings/components/CategorySettingsCard.tsx
 
 import React from 'react';
-import { Pencil, Trash2, PlusCircle } from 'lucide-react'; // Import PlusCircle
+import { Pencil, Trash2, Plus } from 'lucide-react';
 import type { Category } from '../../types';
 import { getCategoryIcon } from '../../utils/iconHelper';
 
@@ -14,40 +14,41 @@ interface CategorySettingsCardProps {
 
 const CategorySettingsCard: React.FC<CategorySettingsCardProps> = ({ categories = [], onAdd, onEdit, onDelete }) => {
   return (
-    <div className="bg-white rounded-xl shadow-md p-4 flex flex-col h-80">
-      {/* ✅ --- "ADD NEW" BUTTON IS NOW HERE --- */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Category</h2>
-        <button 
-          onClick={onAdd} 
-          className="flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-800"
+    <div className="bg-card border-2 border-line rounded-cardLg p-5 flex flex-col h-80">
+      <div className="flex justify-between items-center border-b-2 border-line pb-3">
+        <h2 className="font-heading font-extrabold text-base text-ink">Categories</h2>
+        <button
+          onClick={onAdd}
+          className="flex items-center gap-1 bg-candy-mint border-1.5 border-line rounded-full px-3.5 py-1.5 font-heading font-bold text-[11.5px] text-[#1E1B16] shadow-chip hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all duration-press"
         >
-          <PlusCircle size={16} /> Add New
+          <Plus size={13} strokeWidth={3} /> Add
         </button>
       </div>
-      <div className="overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-gray-300">
+      <div className="flex-1 overflow-y-auto pr-1">
         {categories.length > 0 ? (
-          categories.map((category) => (
-            <div
-              key={category.id}
-              className="flex items-center justify-between bg-gray-50 rounded-md px-3 py-2"
-            >
-              <div className="flex items-center gap-3">
-                {getCategoryIcon(category.name, category.icon_name)}
-                <span className="text-sm font-medium">{category.name}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3.5">
+            {categories.map((category) => (
+              <div
+                key={category.id}
+                className="flex items-center gap-2.5 border-1.5 border-line rounded-chip px-3 py-2.5"
+              >
+                <div className="w-8 h-8 rounded-full border-1.5 border-line flex items-center justify-center shrink-0">
+                  {getCategoryIcon(category.name, category.icon_name)}
+                </div>
+                <span className="flex-1 font-heading font-bold text-[13px] text-ink truncate">{category.name}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => onEdit(category)} className="p-1 text-muted hover:text-link">
+                    <Pencil size={14} />
+                  </button>
+                  <button onClick={() => onDelete(category.id)} className="p-1 text-muted hover:text-semantic-red">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <button onClick={() => onEdit(category)} className="p-1 text-gray-500 hover:text-blue-600">
-                  <Pencil size={16} />
-                </button>
-                <button onClick={() => onDelete(category.id)} className="p-1 text-gray-500 hover:text-red-600">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : (
-          <p className="text-center text-gray-500 mt-4">No categories found.</p>
+          <p className="text-center font-body text-sm text-muted mt-8">No categories found.</p>
         )}
       </div>
     </div>

@@ -1,93 +1,152 @@
 // File: src/Analytics/components/AnalyticsHeader.tsx
 import React from 'react';
 import type { AnalyticsOverview } from '../../types';
-import { ChevronLeft, ChevronRight, TrendingUp, BarChart } from 'lucide-react';
+import { BarChart3, TrendingUp, Wallet } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatter';
+import { useMonth } from '../../components/MonthContext';
+import MonthControl from '../../components/MonthControl';
 
 interface AnalyticsHeaderProps {
   overview: AnalyticsOverview;
   viewMode: 'trend' | 'month';
   setViewMode: (mode: 'trend' | 'month') => void;
+  // Trend-mode range only ('3m' | '6m' | '1y' | 'all') -- month mode reads/
+  // writes the shared useMonth() context instead (see MonthControl below).
   timePeriod: string;
   setTimePeriod: (period: string) => void;
   includeCapitalTransfers: boolean;
   setIncludeCapitalTransfers: (value: boolean) => void;
+  // Derived client-side from the already-fetched categoryDistribution total --
+  // there's no dedicated "current period total" field on AnalyticsOverview.
+  periodTotal: number;
 }
 
-const AnalyticsHeader: React.FC<AnalyticsHeaderProps> = ({ 
-  overview, viewMode, setViewMode, timePeriod, setTimePeriod, 
-  includeCapitalTransfers, setIncludeCapitalTransfers
-}) => {
-  const handleMonthChange = (direction: 'prev' | 'next') => {
-    const date = new Date(`${timePeriod}-15T12:00:00Z`);
-    if (direction === 'prev') { date.setMonth(date.getMonth() - 1); } 
-    else { date.setMonth(date.getMonth() + 1); }
-    setTimePeriod(date.toISOString().slice(0, 7));
-  };
+const TREND_LABELS: Record<string, string> = {
+  '3m': 'Last 3 Months',
+  '6m': 'Last 6 Months',
+  '1y': 'This Year',
+  'all': 'All Time',
+};
 
-  const formatMonth = (monthStr: string) => {
-    const date = new Date(`${monthStr}-15`);
-    return date.toLocaleString('default', { month: 'short' });
-  };
+const formatWhole = (value: number) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+
+const formatMonth = (monthStr: string) => {
+  const date = new Date(`${monthStr}-01T12:00:00Z`);
+  return date.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+};
+
+const formatMonthShort = (monthStr: string) => {
+  const date = new Date(`${monthStr}-01T12:00:00Z`);
+  return date.toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+};
+
+const AnalyticsHeader: React.FC<AnalyticsHeaderProps> = ({
+  overview, viewMode, setViewMode, timePeriod, setTimePeriod,
+  includeCapitalTransfers, setIncludeCapitalTransfers, periodTotal,
+}) => {
+  const { month } = useMonth();
+
+  const avg = overview.averageSpendPerMonth;
+  const deltaPct = avg > 0 ? ((periodTotal - avg) / avg) * 100 : 0;
+  const periodIsBelowAvg = deltaPct < 0;
 
   return (
-    <div className="flex flex-col bg-white p-4 rounded-xl shadow-sm gap-4">
-      <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
-        <h2 className="font-semibold text-lg whitespace-nowrap">Analytics Overview</h2>
-        
-        {/* Filter Controls */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700">Include Capital Transfers</label>
-              <button
-                  role="switch"
-                  aria-checked={includeCapitalTransfers}
-                  onClick={() => setIncludeCapitalTransfers(!includeCapitalTransfers)}
-                  className={`${includeCapitalTransfers ? 'bg-blue-600' : 'bg-gray-200'} relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none`}
-              >
-                  <span className={`${includeCapitalTransfers ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}/>
-              </button>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div>
+          <h1 className="font-heading font-extrabold text-[32px] leading-none tracking-[-0.02em]">Analytics</h1>
+          <p className="font-body text-sm text-muted mt-1.5">How the money actually behaves.</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={includeCapitalTransfers}
+            onClick={() => setIncludeCapitalTransfers(!includeCapitalTransfers)}
+            className={[
+              "border border-line rounded-full shadow-chip px-3.5 py-2 font-heading font-bold text-xs whitespace-nowrap transition-colors duration-chip",
+              includeCapitalTransfers ? "bg-candy-mint text-[#1E1B16]" : "bg-card text-ink",
+            ].join(" ")}
+          >
+            Capital transfers: {includeCapitalTransfers ? "On" : "Off"}
+          </button>
+
+          <div className="flex bg-card border border-line rounded-full shadow-chip overflow-hidden font-heading font-bold text-xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('trend')}
+              className={`px-4 py-2 transition-colors duration-chip ${viewMode === 'trend' ? 'bg-candy-yellow text-[#1E1B16]' : 'text-ink opacity-55 hover:opacity-100'}`}
+            >
+              Trend
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('month')}
+              className={`px-4 py-2 border-l border-line transition-colors duration-chip ${viewMode === 'month' ? 'bg-candy-yellow text-[#1E1B16]' : 'text-ink opacity-55 hover:opacity-100'}`}
+            >
+              Month
+            </button>
           </div>
-          <div className="flex rounded-md bg-gray-100 p-1">
-            <button onClick={() => setViewMode('trend')} className={`px-3 py-1 text-sm font-semibold rounded ${viewMode === 'trend' ? 'bg-white shadow' : 'text-gray-600'}`}>Trend</button>
-            <button onClick={() => setViewMode('month')} className={`px-3 py-1 text-sm font-semibold rounded ${viewMode === 'month' ? 'bg-white shadow' : 'text-gray-600'}`}>Month</button>
-          </div>
+
           {viewMode === 'trend' ? (
-            <select value={timePeriod} onChange={e => setTimePeriod(e.target.value)} className="px-3 py-1.5 border border-gray-300 rounded-md text-sm bg-white">
+            <select
+              value={timePeriod}
+              onChange={e => setTimePeriod(e.target.value)}
+              className="bg-card border border-line rounded-full shadow-chip px-4 py-2 font-heading font-bold text-xs text-ink outline-none cursor-pointer"
+            >
               <option value="3m">Last 3 Months</option>
               <option value="6m">Last 6 Months</option>
               <option value="1y">This Year</option>
               <option value="all">All Time</option>
             </select>
           ) : (
-            <div className="flex items-center space-x-2 border rounded-md p-1">
-              <button onClick={() => handleMonthChange('prev')} className="p-1 rounded-md hover:bg-gray-100"><ChevronLeft size={20}/></button>
-              <span className="text-sm font-semibold w-28 text-center">
-                {new Date(timePeriod + '-15').toLocaleString('default', { month: 'long', year: 'numeric' })}
-              </span>
-              <button onClick={() => handleMonthChange('next')} className="p-1 rounded-md hover:bg-gray-100"><ChevronRight size={20}/></button>
-            </div>
+            <MonthControl />
           )}
         </div>
       </div>
 
-      {/* //! THIS IS THE NEW KPI SECTION */}
-      <div className="border-t border-gray-200 mt-2 pt-4 flex justify-center items-center gap-8 text-center">
-        <div>
-          <p className="text-sm text-gray-500 font-medium flex items-center gap-2"><BarChart size={16}/> Highest Spend</p>
-          <p className="text-xl font-bold text-gray-800 mt-1">
-            {overview.highestSpendMonth 
-              ? `${formatMonth(overview.highestSpendMonth.month)} (${formatCurrency(overview.highestSpendMonth.actual)})`
-              : 'N/A'
-            }
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-[18px]">
+        <div className="bg-candy-yellow border-2 border-line rounded-cardLg shadow-card p-5 text-[#1E1B16]">
+          <p className="font-body font-semibold text-[10px] uppercase tracking-[0.14em] flex items-center gap-1.5">
+            <BarChart3 size={14} /> Highest Spend Month
+          </p>
+          <p className="font-money text-[32px] leading-none tracking-[-0.02em] mt-2.5">
+            {overview.highestSpendMonth ? formatWhole(overview.highestSpendMonth.actual) : '—'}
+          </p>
+          <p className="font-body font-semibold text-[11px] mt-2">
+            {overview.highestSpendMonth
+              ? `${formatMonthShort(overview.highestSpendMonth.month)} · ${formatCurrency(overview.highestSpendMonth.actual)}`
+              : 'No data yet'}
           </p>
         </div>
-        <div className="border-l h-10 border-gray-200"></div>
-        <div>
-          <p className="text-sm text-gray-500 font-medium flex items-center gap-2"><TrendingUp size={16}/> Average Spend/Month</p>
-          <p className="text-xl font-bold text-gray-800 mt-1">
-            {formatCurrency(overview.averageSpendPerMonth)}
+
+        <div className="bg-card border-2 border-line rounded-cardLg p-5">
+          <p className="font-body font-semibold text-[10px] uppercase tracking-[0.14em] text-muted flex items-center gap-1.5">
+            <TrendingUp size={14} /> Average Spend / Month
           </p>
+          <p className="font-money text-[32px] leading-none tracking-[-0.02em] mt-2.5">{formatWhole(avg)}</p>
+          <p className="font-body font-semibold text-[11px] text-muted mt-2">Based on your spending history</p>
+        </div>
+
+        <div className="bg-card border-2 border-line rounded-cardLg p-5">
+          <p className="font-body font-semibold text-[10px] uppercase tracking-[0.14em] text-muted flex items-center gap-1.5">
+            <Wallet size={14} /> {viewMode === 'month' ? `Total Spend · ${formatMonth(month)}` : `Total Spend · ${TREND_LABELS[timePeriod] || 'Selected Range'}`}
+          </p>
+          <p className="font-money text-[32px] leading-none tracking-[-0.02em] mt-2.5">{formatWhole(periodTotal)}</p>
+          {viewMode === 'month' && avg > 0 ? (
+            <p className={`font-body font-semibold text-[11px] mt-2 ${periodIsBelowAvg ? 'text-semantic-green' : 'text-semantic-red'}`}>
+              {Math.abs(deltaPct).toFixed(0)}% {periodIsBelowAvg ? 'below' : 'above'} your average
+            </p>
+          ) : (
+            <p className="font-body font-semibold text-[11px] text-muted mt-2">Across the selected period</p>
+          )}
         </div>
       </div>
     </div>
