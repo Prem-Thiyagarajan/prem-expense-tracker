@@ -2,7 +2,11 @@
 
 import axios from 'axios';
 import toast from 'react-hot-toast'; // Import toast for the interceptor
-import type { DashboardData, BudgetPageData, Category, Transaction, Tag, Account, AnalyticsData, User, Alert, Merchant, MerchantCluster, RescanResult } from '../types';
+import type {
+  DashboardData, BudgetPageData, Category, Transaction, Tag, Account, AnalyticsData, User, Alert,
+  Merchant, MerchantCluster, RescanResult, Goal, Subscription, AssistantChatMessage, AssistantHealth,
+  AssistantStreamEvent,
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -182,6 +186,124 @@ export const getMerchantClusters = (): Promise<MerchantCluster[]> => {
 export const rescanMerchants = (): Promise<RescanResult> => {
   return apiClient.post<RescanResult>('/merchants/rescan').then(res => res.data);
 };
+
+// 9. Goals (per-category monthly limits -- Budgets page "Category limits" section)
+export const getGoals = (month: string): Promise<Goal[]> => {
+  return apiClient.get<Goal[]>('/goals/', { params: { month } }).then(res => res.data);
+};
+export const createGoal = (data: { category_id: number; month: string; limit_amount: number }): Promise<Goal> => {
+  return apiClient.post<Goal>('/goals/', data).then(res => res.data);
+};
+export const updateGoal = (id: number, data: { limit_amount: number }): Promise<Goal> => {
+  return apiClient.put<Goal>(`/goals/${id}`, data).then(res => res.data);
+};
+export const deleteGoal = (id: number): Promise<Goal> => {
+  return apiClient.delete<Goal>(`/goals/${id}`).then(res => res.data);
+};
+
+// 10. Subscriptions (Bill Radar)
+export const getSubscriptions = (includeInactive = false): Promise<Subscription[]> => {
+  return apiClient.get<Subscription[]>('/subscriptions/', { params: { include_inactive: includeInactive } }).then(res => res.data);
+};
+export const createSubscription = (data: {
+  name: string; description?: string | null; amount: number; interval: Subscription['interval'];
+  first_due_date: string; last_paid_date?: string | null;
+}): Promise<Subscription> => {
+  return apiClient.post<Subscription>('/subscriptions/', data).then(res => res.data);
+};
+export const updateSubscription = (id: number, data: Partial<{
+  name: string; description: string | null; amount: number; interval: Subscription['interval'];
+  is_active: boolean; first_due_date: string; last_paid_date: string | null;
+}>): Promise<Subscription> => {
+  return apiClient.put<Subscription>(`/subscriptions/${id}`, data).then(res => res.data);
+};
+export const deleteSubscription = (id: number): Promise<Subscription> => {
+  return apiClient.delete<Subscription>(`/subscriptions/${id}`).then(res => res.data);
+};
+export const paySubscription = (id: number, paidForDate?: string): Promise<Subscription> => {
+  return apiClient.put<Subscription>(`/subscriptions/${id}/pay`, paidForDate ? { paid_for_date: paidForDate } : {}).then(res => res.data);
+};
+export const unpaySubscription = (id: number): Promise<Subscription> => {
+  return apiClient.put<Subscription>(`/subscriptions/${id}/unpay`).then(res => res.data);
+};
+
+// 11. Assistant (read-only chat + voice)
+export const getAssistantHealth = (): Promise<AssistantHealth> => {
+  return apiClient.get<AssistantHealth>('/assistant/health').then(res => res.data);
+};
+
+export const transcribeAudio = (blob: Blob): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', blob, 'recording.webm');
+  return apiClient.post<{ text: string }>('/assistant/transcribe', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(res => res.data.text);
+};
+
+/**
+ * Streams one assistant turn as parsed SSE events. Uses raw fetch() rather
+ * than the axios instance above -- axios doesn't expose a readable byte
+ * stream for POST responses in the browser, and the native EventSource API
+ * only supports GET (this endpoint needs a JSON body + auth header), so
+ * there's no way to reuse either. Auth/base-URL/401-handling are duplicated
+ * here deliberately, matching apiClient's own logic, rather than threading a
+ * streaming response back through the axios interceptor chain.
+ */
+export async function* streamAssistantChat(
+  messages: AssistantChatMessage[],
+  month?: string,
+  signal?: AbortSignal,
+): AsyncGenerator<AssistantStreamEvent> {
+  const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+  const response = await fetch(`${API_BASE_URL}/assistant/chat`, {
+    method: 'POST',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ messages, month }),
+  });
+
+  if (response.status === 401) {
+    clearToken();
+    window.location.href = '/login';
+    throw new Error('Session expired.');
+  }
+  if (!response.ok || !response.body) {
+    let message = `Assistant request failed (${response.status}).`;
+    try {
+      const body = await response.json();
+      message = body?.detail?.message || body?.detail || message;
+    } catch { /* body wasn't JSON -- keep the generic message */ }
+    throw new Error(message);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE frames are separated by a blank line; each frame's payload is
+    // whatever follows every "data: " line in it (there's only ever one here).
+    let sepIndex: number;
+    while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+      const frame = buffer.slice(0, sepIndex);
+      buffer = buffer.slice(sepIndex + 2);
+      const line = frame.split('\n').find(l => l.startsWith('data: '));
+      if (!line) continue;
+      try {
+        yield JSON.parse(line.slice(6)) as AssistantStreamEvent;
+      } catch {
+        // Malformed frame -- skip rather than crash the whole stream.
+      }
+    }
+  }
+}
 
 
 export default apiClient;

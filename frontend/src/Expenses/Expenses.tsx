@@ -95,7 +95,13 @@ const Expenses: React.FC = () => {
       setEndDate(lastDay);
       needsFetch = true;
     }
-    
+
+    // The Assistant's "add-transaction" navigate sheet -- see Assistant/AssistantPanel.tsx.
+    if (state?.openAddTransaction) {
+      setTransactionToEdit(null);
+      setIsModalOpen(true);
+    }
+
     if (needsFetch) {
       window.history.replaceState({}, document.title)
     }

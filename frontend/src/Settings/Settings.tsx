@@ -1,8 +1,8 @@
 // File: src/Settings/Settings.tsx
 
 import React, { useState, useEffect } from 'react';
-import { getCategories, deleteCategory, getTags, getAccounts, deleteTag, deleteAccount, deleteMyAccount } from '../api/apiClient';
-import type { Category, Tag, Account } from '../types';
+import { getCategories, deleteCategory, getTags, getAccounts, deleteTag, deleteAccount, deleteMyAccount, getSubscriptions, deleteSubscription } from '../api/apiClient';
+import type { Category, Tag, Account, Subscription } from '../types';
 import { availableIcons } from '../utils/iconHelper';
 import toast from 'react-hot-toast';
 // ✅ NEW: Import useLocation
@@ -18,11 +18,14 @@ import TagModal from './components/TagModal';
 import AccountModal from './components/AccountModal';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import ConfirmDeleteAccountModal from './components/ConfirmDeleteAccountModal';
+import SubscriptionsCard from './components/SubscriptionsCard';
+import SubscriptionModal from './components/SubscriptionModal';
 
 const Settings: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -35,8 +38,10 @@ const Settings: React.FC = () => {
   const [tagToEdit, setTagToEdit] = useState<Tag | null>(null);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [accountToEdit, setAccountToEdit] = useState<Account | null>(null);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  const [subscriptionToEdit, setSubscriptionToEdit] = useState<Subscription | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{ id: number; type: 'category' | 'tag' | 'account' } | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ id: number; type: 'category' | 'tag' | 'account' | 'subscription' } | null>(null);
   const [isConfirmDeleteAccountModalOpen, setIsConfirmDeleteAccountModalOpen] = useState(false);
   // ✅ NEW: State to hold the pre-filled name from an alert click
   const [prefilledCategoryName, setPrefilledCategoryName] = useState<string | null>(null);
@@ -44,12 +49,13 @@ const Settings: React.FC = () => {
   const fetchData = async () => {
     try {
       if (isLoading) setIsLoading(true);
-      const [categoriesData, tagsData, accountsData] = await Promise.all([
-        getCategories(), getTags(), getAccounts()
+      const [categoriesData, tagsData, accountsData, subscriptionsData] = await Promise.all([
+        getCategories(), getTags(), getAccounts(), getSubscriptions()
       ]);
       setCategories(categoriesData);
       setTags(tagsData);
       setAccounts(accountsData);
+      setSubscriptions(subscriptionsData);
     } catch (err) {
       setError("Failed to load settings data. Please ensure the backend is running.");
     } finally {
@@ -88,6 +94,13 @@ const Settings: React.FC = () => {
   const handleDeleteAccount = (id: number) => { setItemToDelete({ id, type: 'account' }); setIsConfirmModalOpen(true); };
   const handleSaveAccount = () => { fetchData(); };
 
+  const handleAddNewSubscription = () => { setSubscriptionToEdit(null); setIsSubscriptionModalOpen(true); };
+  const handleEditSubscription = (subscription: Subscription) => { setSubscriptionToEdit(subscription); setIsSubscriptionModalOpen(true); };
+  const handleDeleteSubscription = (id: number) => { setItemToDelete({ id, type: 'subscription' }); setIsConfirmModalOpen(true); };
+  const handleSaveSubscription = () => { fetchData(); };
+  // Pay / unpay act immediately (no modal) -- just re-pull the list.
+  const refreshSubscriptions = () => { getSubscriptions().then(setSubscriptions); };
+
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
     const toastId = toast.loading(`Deleting ${itemToDelete.type}...`);
@@ -95,6 +108,7 @@ const Settings: React.FC = () => {
       if (itemToDelete.type === 'category') await deleteCategory(itemToDelete.id);
       else if (itemToDelete.type === 'tag') await deleteTag(itemToDelete.id);
       else if (itemToDelete.type === 'account') await deleteAccount(itemToDelete.id);
+      else if (itemToDelete.type === 'subscription') await deleteSubscription(itemToDelete.id);
       toast.success(`${itemToDelete.type.charAt(0).toUpperCase() + itemToDelete.type.slice(1)} deleted!`, { id: toastId });
       fetchData();
     } catch (err) {
@@ -145,9 +159,13 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
-        {/* NOTE(Part 2): a Subscriptions card (recurrence, next due date, mark
-            paid, edit/delete) slots in here as its own bg-card border-2
-            rounded-cardLg card — out of scope for this visual pass. */}
+        <SubscriptionsCard
+          subscriptions={subscriptions}
+          onAdd={handleAddNewSubscription}
+          onEdit={handleEditSubscription}
+          onDelete={handleDeleteSubscription}
+          onChanged={refreshSubscriptions}
+        />
 
         <DataSyncCard />
 
@@ -177,6 +195,7 @@ const Settings: React.FC = () => {
 
       <TagModal isOpen={isTagModalOpen} onClose={() => setIsTagModalOpen(false)} onSave={handleSaveTag} tagToEdit={tagToEdit} />
       <AccountModal isOpen={isAccountModalOpen} onClose={() => setIsAccountModalOpen(false)} onSave={handleSaveAccount} accountToEdit={accountToEdit} />
+      <SubscriptionModal isOpen={isSubscriptionModalOpen} onClose={() => setIsSubscriptionModalOpen(false)} onSave={handleSaveSubscription} subscriptionToEdit={subscriptionToEdit} />
       <ConfirmModal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} onConfirm={handleConfirmDelete} title={`Delete ${itemToDelete?.type}`} message={`Are you sure? This cannot be undone.`} />
       
       <ConfirmDeleteAccountModal 
